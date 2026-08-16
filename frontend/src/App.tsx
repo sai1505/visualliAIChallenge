@@ -1,122 +1,154 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState } from "react";
+import { Moon, Sprout, Sun, TreeDeciduous } from "lucide-react";
+import MindmapCanvas from "./components/MindmapCanvas";
+import { buildTree, SAMPLE_TEXT } from "./lib/textToTree";
+import { countNodes, maxDepth } from "./lib/treeUtils";
+import { darkTheme, lightTheme } from "./constants/theme";
+import "./styles/canopy.css";
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [mode, setMode] = useState<"dark" | "light">("dark");
+  const theme = mode === "dark" ? darkTheme : lightTheme;
+
+  const [text, setText] = useState(SAMPLE_TEXT);
+  const [tree, setTree] = useState(() => buildTree(SAMPLE_TEXT));
+  const [error, setError] = useState("");
+
+  function handleGenerate() {
+    if (!text.trim()) {
+      setError("Give it a sentence or two to grow a tree from.");
+      return;
+    }
+    const next = buildTree(text);
+    if (!next) {
+      setError("Couldn't find enough there — try a fuller sentence.");
+      return;
+    }
+    setError("");
+    setTree(next);
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
+    <div style={{ background: theme.bg, minHeight: "100vh", color: theme.ink }}>
+      <div style={{ maxWidth: 1180, margin: "0 auto", padding: "56px 24px 72px" }}>
+        {/* header */}
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+          <div>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                fontSize: 12,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                color: theme.muted,
+              }}
+            >
+              <TreeDeciduous size={14} />
+              text → tree
+            </div>
+            <h1 style={{ fontWeight: 800, fontSize: 46, margin: "10px 0 8px", letterSpacing: "-0.02em" }}>
+              Canopy
+            </h1>
+            <p style={{ color: theme.muted, fontSize: 16, maxWidth: 520, lineHeight: 1.6, margin: 0 }}>
+              Paste in a paragraph. It grows roots, branches, and leaves you can click through.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setMode((m) => (m === "dark" ? "light" : "dark"))}
+            aria-label="Toggle light and dark mode"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 40,
+              height: 40,
+              borderRadius: 999,
+              background: theme.panelBg,
+              color: theme.panelText,
+              border: `1px solid ${theme.panelBorder}`,
+              cursor: "pointer",
+              flexShrink: 0,
+            }}
+          >
+            {mode === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+          </button>
         </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
+
+        {/* input card */}
+        <section
+          style={{
+            marginTop: 32,
+            background: theme.panelBg,
+            color: theme.panelText,
+            borderRadius: 20,
+            border: `1px solid ${theme.panelBorder}`,
+            padding: 22,
+          }}
         >
-          Count is {count}
-        </button>
-      </section>
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Paste your text here…"
+            rows={6}
+            style={{
+              width: "100%",
+              resize: "none",
+              border: "none",
+              background: "transparent",
+              color: "inherit",
+              fontSize: 15,
+              lineHeight: 1.6,
+              fontFamily: "inherit",
+            }}
+          />
 
-      <div className="ticks"></div>
+          <div style={{ marginTop: 8, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+            <span style={{ fontSize: 12.5, opacity: 0.55 }}>
+              {text.length} characters · parsed on-device for this preview
+            </span>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+            <button
+              className="grow-btn"
+              onClick={handleGenerate}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                background: theme.panelText,
+                color: theme.panelBg,
+                border: "none",
+                borderRadius: 999,
+                padding: "10px 20px",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              <Sprout size={16} />
+              Grow mindmap
+            </button>
+          </div>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+          {error && <p style={{ marginTop: 10, fontSize: 13, color: mode === "dark" ? "#ff8a8a" : "#c22b2b" }}>{error}</p>}
+        </section>
+
+        {/* tree */}
+        {tree && (
+          <section style={{ marginTop: 36 }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap", marginBottom: 16 }}>
+              <h2 style={{ fontWeight: 700, fontSize: 22, margin: 0 }}>{tree.label}</h2>
+              <span style={{ fontSize: 12, color: theme.muted }}>
+                {countNodes(tree)} ideas · {maxDepth(tree)} branches deep
+              </span>
+            </div>
+
+            <MindmapCanvas mindmap={tree} theme={theme} />
+          </section>
+        )}
+      </div>
+    </div>
+  );
 }
-
-export default App
