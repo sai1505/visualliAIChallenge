@@ -6,6 +6,6 @@ __pycache__/
 !.env.example
 .vscode/
 .idea/
-checkList.txt
+roughFile.txt
 backend/test/
 backend/.pytest_cache/

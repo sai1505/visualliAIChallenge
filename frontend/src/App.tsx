@@ -1,10 +1,5 @@
 import { useState } from "react";
-import {
-  Moon,
-  Sprout,
-  Sun,
-  TreeDeciduous,
-} from "lucide-react";
+import { Moon, Sprout, Sun } from "lucide-react";
 
 import MindmapCanvas from "./components/MindmapCanvas";
 import { generateMindmap } from "./api";
@@ -22,18 +17,18 @@ import type {
   MindmapNode,
 } from "./types/mindmap";
 
-import "./styles/canopy.css";
 
 export default function App() {
   const [mode, setMode] =
-    useState<"dark" | "light">("dark");
+    useState<"dark" | "light">("light");
 
   const theme =
     mode === "dark"
       ? darkTheme
       : lightTheme;
 
-  const [text, setText] = useState("");
+  const [text, setText] =
+    useState("");
 
   const [mindmap, setMindmap] =
     useState<Mindmap | null>(null);
@@ -44,7 +39,8 @@ export default function App() {
   const [loading, setLoading] =
     useState(false);
 
-  const [error, setError] = useState("");
+  const [error, setError] =
+    useState("");
 
   async function handleGenerate() {
     if (!text.trim()) {
@@ -60,19 +56,30 @@ export default function App() {
     setSelectedNode(null);
 
     try {
-      console.log("Generating mindmap...");
+      console.log(
+        "Generating mindmap..."
+      );
 
-      const result = await generateMindmap(text);
+      const result =
+        await generateMindmap(text);
 
-      console.log("Mindmap received:", result);
+      console.log(
+        "Mindmap received:",
+        result
+      );
 
       setMindmap(result);
 
-      const root = result.nodes.find(
-        (node) => node.id === result.rootId
-      );
+      const root =
+        result.nodes.find(
+          (node) =>
+            node.id ===
+            result.rootId
+        );
 
-      setSelectedNode(root ?? null);
+      setSelectedNode(
+        root ?? null
+      );
     } catch (err) {
       console.error(
         "Mindmap generation failed:",
@@ -95,74 +102,38 @@ export default function App() {
 
   return (
     <div
+      className="min-h-screen"
       style={{
-        background: theme.bg,
-        minHeight: "100vh",
+        backgroundColor: theme.bg,
         color: theme.ink,
       }}
     >
-      <div
-        style={{
-          maxWidth: 1180,
-          margin: "0 auto",
-          padding: "56px 24px 72px",
-        }}
-      >
+      <main className="mx-auto w-full max-w-[1180px] px-6 py-14 md:py-[56px] lg:py-[72px]">
         {/* Header */}
 
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "space-between",
-            gap: 16,
-          }}
-        >
+        <header className="flex items-start justify-between gap-4">
           <div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                fontSize: 12,
-                letterSpacing: "0.14em",
-                textTransform: "uppercase",
-                color: theme.muted,
-              }}
-            >
-              <TreeDeciduous size={14} />
-              text → tree
-            </div>
-
-            <h1
-              style={{
-                fontWeight: 800,
-                fontSize: 46,
-                margin: "10px 0 8px",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              Canopy
+            <h1 className="m-0 text-[46px] font-extrabold leading-tight tracking-[-0.02em]">
+              Visualli AI
             </h1>
 
             <p
+              className="mt-2 max-w-[920px] text-base leading-[1.6]"
               style={{
                 color: theme.muted,
-                fontSize: 16,
-                maxWidth: 520,
-                lineHeight: 1.6,
-                margin: 0,
               }}
             >
-              Paste in a paragraph. It grows
-              roots, branches, and leaves you
-              can click through.
+              Paste in a paragraph. It
+              grows roots, branches,
+              and leaves you can click
+              through.
             </p>
           </div>
 
           {/* Theme toggle */}
 
           <button
+            type="button"
             onClick={() =>
               setMode((m) =>
                 m === "dark"
@@ -171,18 +142,14 @@ export default function App() {
               )
             }
             aria-label="Toggle light and dark mode"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-all duration-200 hover:scale-105"
             style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 40,
-              height: 40,
-              borderRadius: 999,
-              background: theme.panelBg,
-              color: theme.panelText,
-              border: `1px solid ${theme.panelBorder}`,
-              cursor: "pointer",
-              flexShrink: 0,
+              backgroundColor:
+                theme.panelBg,
+              color:
+                theme.panelText,
+              borderColor:
+                theme.panelBorder,
             }}
           >
             {mode === "dark" ? (
@@ -191,79 +158,52 @@ export default function App() {
               <Moon size={17} />
             )}
           </button>
-        </div>
+        </header>
 
         {/* Input */}
 
         <section
+          className="mt-8 rounded-[20px] border p-[22px]"
           style={{
-            marginTop: 32,
-            background: theme.panelBg,
-            color: theme.panelText,
-            borderRadius: 20,
-            border: `1px solid ${theme.panelBorder}`,
-            padding: 22,
+            backgroundColor:
+              theme.panelBg,
+            color:
+              theme.panelText,
+            borderColor:
+              theme.panelBorder,
           }}
         >
           <textarea
             value={text}
             onChange={(e) =>
-              setText(e.target.value)
+              setText(
+                e.target.value
+              )
             }
             placeholder="Paste your text here…"
             rows={6}
-            style={{
-              width: "100%",
-              resize: "none",
-              border: "none",
-              outline: "none",
-              background: "transparent",
-              color: "inherit",
-              fontSize: 15,
-              lineHeight: 1.6,
-              fontFamily: "inherit",
-            }}
+            className="w-full resize-none border-none bg-transparent text-[15px] leading-[1.6] outline-none placeholder:opacity-40"
           />
 
-          <div
-            style={{
-              marginTop: 8,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              flexWrap: "wrap",
-              gap: 12,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 12.5,
-                opacity: 0.55,
-              }}
-            >
-              {text.length} characters ·
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+            <span className="text-[12.5px] opacity-55">
+              {text.length} characters
+              {" · "}
               AI-generated mindmap
             </span>
 
             <button
-              className="grow-btn"
-              onClick={handleGenerate}
+              type="button"
+              className="grow-btn inline-flex items-center gap-2 rounded-full border-none px-5 py-2.5 text-sm font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={
+                handleGenerate
+              }
               disabled={loading}
               style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                background: theme.panelText,
-                color: theme.panelBg,
-                border: "none",
-                borderRadius: 999,
-                padding: "10px 20px",
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: loading
-                  ? "not-allowed"
-                  : "pointer",
-                opacity: loading ? 0.6 : 1,
+                backgroundColor:
+                  theme.panelText,
+                color:
+                  theme.panelBg,
               }}
             >
               <Sprout size={16} />
@@ -276,9 +216,8 @@ export default function App() {
 
           {error && (
             <p
+              className="mt-2.5 text-[13px]"
               style={{
-                marginTop: 10,
-                fontSize: 13,
                 color:
                   mode === "dark"
                     ? "#ff8a8a"
@@ -293,51 +232,44 @@ export default function App() {
         {/* Mindmap */}
 
         {mindmap && tree && (
-          <section
-            style={{
-              marginTop: 36,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "baseline",
-                gap: 14,
-                flexWrap: "wrap",
-                marginBottom: 16,
-              }}
-            >
-              <h2
-                style={{
-                  fontWeight: 700,
-                  fontSize: 22,
-                  margin: 0,
-                }}
-              >
+          <section className="mt-9">
+            <div className="mb-4 flex flex-wrap items-baseline gap-3.5">
+              <h2 className="m-0 text-[22px] font-bold">
                 {mindmap.title}
               </h2>
 
               <span
+                className="text-xs"
                 style={{
-                  fontSize: 12,
-                  color: theme.muted,
+                  color:
+                    theme.muted,
                 }}
               >
-                {countTreeNodes(tree)} ideas ·{" "}
-                {maxTreeDepth(tree)} branches
-                deep
+                {countTreeNodes(
+                  tree
+                )}{" "}
+                ideas
+                {" · "}
+                {maxTreeDepth(
+                  tree
+                )}{" "}
+                branches deep
               </span>
             </div>
 
             <MindmapCanvas
               mindmap={mindmap}
               theme={theme}
-              selectedNode={selectedNode}
-              onNodeSelect={setSelectedNode}
+              selectedNode={
+                selectedNode
+              }
+              onNodeSelect={
+                setSelectedNode
+              }
             />
           </section>
         )}
-      </div>
+      </main>
     </div>
   );
 }

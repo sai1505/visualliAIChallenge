@@ -1,6 +1,5 @@
 import type { CSSProperties } from "react";
 import { X } from "lucide-react";
-
 import type { Theme } from "../constants/theme";
 import type { TreeNode } from "../lib/mindmapToTree";
 
@@ -13,10 +12,7 @@ interface NodeSummaryProps {
     onSelect: (id: string) => void;
 }
 
-function nodeKind(
-    node: TreeNode,
-    isRoot: boolean
-): string {
+function nodeKind(node: TreeNode, isRoot: boolean): string {
     if (isRoot) {
         return "Root";
     }
@@ -36,195 +32,89 @@ export default function NodeSummary({
     onClose,
     onSelect,
 }: NodeSummaryProps) {
-    const kind = nodeKind(
-        node,
-        isRoot
-    );
+    const kind = nodeKind(node, isRoot);
 
     return (
         <div
-            onClick={(e) =>
-                e.stopPropagation()
-            }
-            className="node-popover"
+            onClick={(e) => e.stopPropagation()}
+            className="node-popover absolute z-20 w-[288px] rounded-2xl border px-[18px] py-4"
             style={{
-                position: "absolute",
-                background:
-                    theme.panelBg,
-                color:
-                    theme.panelText,
-                border:
-                    `1px solid ${theme.panelBorder}`,
-                borderRadius: 16,
-                padding:
-                    "16px 18px 16px",
+                backgroundColor: theme.panelBg,
+                color: theme.panelText,
+                borderColor: theme.panelBorder,
                 boxShadow:
                     theme.mode === "dark"
                         ? "0 24px 48px rgba(0,0,0,0.55)"
                         : "0 24px 48px rgba(0,0,0,0.18)",
-                zIndex: 20,
                 ...style,
             }}
         >
             {/* Header */}
 
-            <div
-                style={{
-                    display: "flex",
-                    justifyContent:
-                        "space-between",
-                    alignItems:
-                        "flex-start",
-                    gap: 10,
-                }}
-            >
-                <span
-                    style={{
-                        fontSize: 10.5,
-                        letterSpacing:
-                            "0.1em",
-                        textTransform:
-                            "uppercase",
-                        opacity: 0.5,
-                    }}
-                >
+            <div className="flex items-start justify-between gap-2.5">
+                <span className="text-[10.5px] uppercase tracking-[0.1em] opacity-50">
                     {kind}
                 </span>
 
                 <button
+                    type="button"
                     onClick={onClose}
                     aria-label="Close"
+                    className="m-[-4px_-4px_0_0] cursor-pointer border-none bg-transparent p-0.5 leading-none opacity-55 transition-opacity hover:opacity-100"
                     style={{
-                        background:
-                            "none",
-                        border: "none",
-                        color:
-                            "inherit",
-                        cursor:
-                            "pointer",
-                        opacity: 0.55,
-                        lineHeight: 1,
-                        padding: 2,
-                        margin:
-                            "-4px -4px 0 0",
+                        color: theme.panelText,
                     }}
                 >
                     <X size={15} />
                 </button>
             </div>
 
-
             {/* Title */}
 
-            <h3
-                style={{
-                    fontWeight: 700,
-                    fontSize: 17,
-                    margin:
-                        "8px 0 0",
-                    lineHeight: 1.3,
-                }}
-            >
+            <h3 className="m-0 mt-2 text-[17px] font-bold leading-[1.3]">
                 {node.label}
             </h3>
 
-
             {/* Summary */}
 
-            <p
-                style={{
-                    marginTop: 10,
-                    lineHeight: 1.6,
-                    fontSize: 13.5,
-                    opacity: 0.8,
-                }}
-            >
+            <p className="mt-2.5 text-[13.5px] leading-[1.6] opacity-80">
                 {node.summary}
             </p>
 
-
             {/* Children */}
 
-            {node.children.length >
-                0 && (
-                    <div
-                        style={{
-                            marginTop: 14,
-                        }}
-                    >
-                        <p
-                            style={{
-                                fontSize: 10,
-                                letterSpacing:
-                                    "0.08em",
-                                textTransform:
-                                    "uppercase",
-                                opacity: 0.5,
-                                marginBottom:
-                                    6,
-                            }}
-                        >
-                            Grows into
-                        </p>
+            {node.children.length > 0 && (
+                <div className="mt-3.5">
+                    <p className="mb-1.5 text-[10px] uppercase tracking-[0.08em] opacity-50">
+                        Grows into
+                    </p>
 
-                        <div
-                            style={{
-                                display:
-                                    "flex",
-                                flexWrap:
-                                    "wrap",
-                                gap: 6,
-                            }}
-                        >
-                            {node.children.map(
-                                (child) => (
-                                    <button
-                                        key={
-                                            child.id
-                                        }
-                                        onClick={() =>
-                                            onSelect(
-                                                child.id
-                                            )
-                                        }
-                                        style={{
-                                            fontSize:
-                                                11.5,
-                                            padding:
-                                                "4px 9px",
-                                            borderRadius:
-                                                999,
-                                            background:
-                                                theme.chipBg,
-                                            color:
-                                                theme.panelText,
-                                            border:
-                                                `1px solid ${theme.panelBorder}`,
-                                            cursor:
-                                                "pointer",
-                                        }}
-                                    >
-                                        {
-                                            child.label
-                                        }
-                                    </button>
-                                )
-                            )}
-                        </div>
+                    <div className="flex flex-wrap gap-1.5">
+                        {node.children.map((child) => (
+                            <button
+                                key={child.id}
+                                type="button"
+                                onClick={() => onSelect(child.id)}
+                                className="cursor-pointer rounded-full border px-[9px] py-1 text-[11.5px] transition-all duration-150 hover:scale-[1.03]"
+                                style={{
+                                    backgroundColor: theme.chipBg,
+                                    color: theme.panelText,
+                                    borderColor: theme.panelBorder,
+                                }}
+                            >
+                                {child.label}
+                            </button>
+                        ))}
                     </div>
-                )}
-
+                </div>
+            )}
 
             {/* Node ID */}
 
             <div
+                className="mt-3.5 border-t pt-2.5 text-[10.5px] opacity-45"
                 style={{
-                    marginTop: 14,
-                    paddingTop: 10,
-                    borderTop:
-                        `1px solid ${theme.panelBorder}`,
-                    fontSize: 10.5,
-                    opacity: 0.45,
+                    borderColor: theme.panelBorder,
                 }}
             >
                 {node.id}

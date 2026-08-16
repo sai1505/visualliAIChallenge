@@ -1,21 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-
 import type { MouseEvent as ReactMouseEvent, WheelEvent } from "react";
-
 import { Leaf, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
-
 import type { Mindmap, MindmapNode } from "../types/mindmap";
-
 import type { Theme } from "../constants/theme";
-
 import { useTreeLayout } from "../lib/useTreeLayout";
-
 import { mindmapToTree, type TreeNode } from "../lib/mindmapToTree";
-
 import { wrapLabel } from "../lib/treeUtils";
-
 import { CANVAS_H, CANVAS_W, NODE_H, NODE_W } from "../constants/theme";
-
 import CanvasButton from "./CanvasButton";
 import NodeSummary from "./NodeSummary";
 
@@ -50,6 +41,26 @@ function nodeStyle(theme: Theme, depth: number, selected: boolean) {
 
         strokeWidth: selected ? 2.5 : isRoot ? 2 : 1.4,
     };
+}
+
+function findTreeNode(root: TreeNode | null, id: string): TreeNode | null {
+    if (!root) {
+        return null;
+    }
+
+    if (root.id === id) {
+        return root;
+    }
+
+    for (const child of root.children) {
+        const result = findTreeNode(child, id);
+
+        if (result) {
+            return result;
+        }
+    }
+
+    return null;
 }
 
 export default function MindmapCanvas({
@@ -137,14 +148,10 @@ export default function MindmapCanvas({
     if (!tree) {
         return (
             <div
+                className="flex h-[600px] items-center justify-center rounded-[20px] border"
                 style={{
-                    height: 600,
-                    borderRadius: 20,
-                    border: `1px solid ${theme.panelBorder}`,
-                    background: theme.canvasBg,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
+                    borderColor: theme.panelBorder,
+                    backgroundColor: theme.canvasBg,
                     color: theme.muted,
                 }}
             >
@@ -159,47 +166,16 @@ export default function MindmapCanvas({
 
     const nodeH = NODE_H * fit;
 
-    function findTreeNode(
-        root: TreeNode | null,
-        id: string
-    ): TreeNode | null {
-        if (!root) {
-            return null;
-        }
-
-        if (root.id === id) {
-            return root;
-        }
-
-        for (const child of root.children) {
-            const result = findTreeNode(
-                child,
-                id
-            );
-
-            if (result) {
-                return result;
-            }
-        }
-
-        return null;
-    }
-
-    function openPopover(
-        e: ReactMouseEvent,
-        nodeId: string
-    ) {
+    function openPopover(e: ReactMouseEvent, nodeId: string) {
         e.stopPropagation();
 
-        const rect =
-            containerRef.current?.getBoundingClientRect();
+        const rect = containerRef.current?.getBoundingClientRect();
 
         if (!rect) {
             return;
         }
 
-        const node =
-            findTreeNode(tree, nodeId);
+        const node = findTreeNode(tree, nodeId);
 
         if (node) {
             onNodeSelect(node);
@@ -246,22 +222,17 @@ export default function MindmapCanvas({
         <div
             ref={containerRef}
             onClick={() => setPopover(null)}
+            className="relative h-[600px] overflow-hidden rounded-[20px] border"
             style={{
-                position: "relative",
-                height: 600,
-                borderRadius: 20,
-                overflow: "hidden",
-                border: `1px solid ${theme.panelBorder}`,
-                background: theme.canvasBg,
+                borderColor: theme.panelBorder,
+                backgroundColor: theme.canvasBg,
             }}
         >
             <svg
                 viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
-                width="100%"
-                height="100%"
+                className="block h-full w-full"
                 style={{
                     cursor: drag.current ? "grabbing" : "grab",
-                    display: "block",
                 }}
                 onWheel={onWheel}
                 onMouseDown={onMouseDown}
@@ -425,33 +396,19 @@ export default function MindmapCanvas({
 
             {/* Help text */}
 
-            <div
-                style={{
-                    position: "absolute",
-                    left: 16,
-                    bottom: 14,
-                    fontSize: 11,
-                    letterSpacing: "0.04em",
-                    color: theme.muted,
-                    opacity: 0.8,
-                    pointerEvents: "none",
-                }}
-            >
-                drag to pan · scroll to zoom · click a node
+            <div className="pointer-events-none absolute bottom-[14px] left-4 text-[11px] tracking-[0.04em] opacity-80">
+                <span
+                    style={{
+                        color: theme.muted,
+                    }}
+                >
+                    drag to pan · scroll to zoom · click a node
+                </span>
             </div>
 
             {/* Controls */}
 
-            <div
-                style={{
-                    position: "absolute",
-                    right: 14,
-                    bottom: 14,
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 8,
-                }}
-            >
+            <div className="absolute bottom-[14px] right-[14px] flex flex-col gap-2">
                 <CanvasButton
                     theme={theme}
                     onClick={() => setZoom((z) => Math.min(2.4, z + 0.2))}
@@ -472,6 +429,7 @@ export default function MindmapCanvas({
                     theme={theme}
                     onClick={() => {
                         setZoom(1);
+
                         setPan({
                             x: 0,
                             y: 0,

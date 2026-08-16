@@ -8,23 +8,35 @@ interface CanvasButtonProps {
     children: ReactNode;
 }
 
-export default function CanvasButton({ onClick, label, theme, children }: CanvasButtonProps) {
+export default function CanvasButton({
+    onClick,
+    label,
+    theme,
+    children,
+}: CanvasButtonProps) {
     return (
         <button
+            type="button"
             onClick={onClick}
             aria-label={label}
+            className="
+                flex
+                h-[34px]
+                w-[34px]
+                items-center
+                justify-center
+                rounded-[10px]
+                border
+                shadow-[0_2px_6px_rgba(0,0,0,0.3)]
+                transition-transform
+                duration-150
+                hover:scale-105
+                active:scale-95
+            "
             style={{
-                width: 34,
-                height: 34,
-                borderRadius: 10,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: theme.panelBg,
+                backgroundColor: theme.panelBg,
                 color: theme.panelText,
-                border: `1px solid ${theme.panelBorder}`,
-                boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
-                cursor: "pointer",
+                borderColor: theme.panelBorder,
             }}
         >
             {children}
