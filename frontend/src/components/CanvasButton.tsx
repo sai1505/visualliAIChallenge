@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { Theme } from "../constants/theme";
+import SpecularButton from "./SpecularButton";
 
 interface CanvasButtonProps {
     onClick: () => void;
@@ -15,31 +16,27 @@ export default function CanvasButton({
     children,
 }: CanvasButtonProps) {
     return (
-        <button
-            type="button"
+        <SpecularButton
+            size="sm"
+            radius={10}
+            tint={theme.panelText}
+            tintOpacity={0}
+            blur={0}
+            textColor={theme.panelBg}
+            lineColor={theme.panelBorder}
+            baseColor={theme.panelBg}
+            intensity={1}
+            shineSize={10}
+            shineFade={40}
+            thickness={1}
+            speed={0.35}
+            followMouse
+            proximity={250}
+            autoAnimate={true}
             onClick={onClick}
             aria-label={label}
-            className="
-                flex
-                h-[34px]
-                w-[34px]
-                items-center
-                justify-center
-                rounded-[10px]
-                border
-                shadow-[0_2px_6px_rgba(0,0,0,0.3)]
-                transition-transform
-                duration-150
-                hover:scale-105
-                active:scale-95
-            "
-            style={{
-                backgroundColor: theme.panelBg,
-                color: theme.panelText,
-                borderColor: theme.panelBorder,
-            }}
         >
             {children}
-        </button>
+        </SpecularButton>
     );
 }

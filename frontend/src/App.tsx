@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Moon, Sprout, Sun } from "lucide-react";
+import SpecularButton from "./components/SpecularButton";
 
 import MindmapCanvas from "./components/MindmapCanvas";
 import { generateMindmap } from "./api";
@@ -100,6 +101,8 @@ export default function App() {
     ? mindmapToTree(mindmap)
     : null;
 
+
+
   return (
     <div
       className="min-h-screen"
@@ -192,26 +195,34 @@ export default function App() {
               AI-generated mindmap
             </span>
 
-            <button
-              type="button"
-              className="grow-btn inline-flex items-center gap-2 rounded-full border-none px-5 py-2.5 text-sm font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
-              onClick={
-                handleGenerate
-              }
+            <SpecularButton
+              size="sm"
+              radius={999}
+              tint={theme.panelText}
+              tintOpacity={0}
+              blur={0}
+              textColor={theme.panelText}
+              lineColor={theme.panelBorder}
+              baseColor={theme.panelText}
+              intensity={1.5}
+              shineSize={10}
+              shineFade={40}
+              thickness={1.2}
+              speed={0.35}
+              followMouse
+              proximity={250}
+              autoAnimate={true}
+              onClick={handleGenerate}
               disabled={loading}
-              style={{
-                backgroundColor:
-                  theme.panelText,
-                color:
-                  theme.panelBg,
-              }}
+              aria-label="Grow mindmap"
             >
-              <Sprout size={16} />
-
-              {loading
-                ? "Growing..."
-                : "Grow mindmap"}
-            </button>
+              <div className="flex items-center gap-2">
+                <Sprout size={16} />
+                <span>
+                  {loading ? "Growing..." : "Grow mindmap"}
+                </span>
+              </div>
+            </SpecularButton>
           </div>
 
           {error && (
@@ -230,43 +241,189 @@ export default function App() {
         </section>
 
         {/* Mindmap */}
+        {!mindmap && !loading && (
+          <section className="mt-12 flex flex-col items-center justify-center px-6 py-16 text-center">
+            <Sprout
+              size={32}
+              className="mb-4 opacity-40"
+            />
+
+            <h2 className="text-lg font-semibold">
+              Your mindmap will grow here
+            </h2>
+
+            <p className="mt-2 max-w-md text-sm opacity-60">
+              Paste some text above and click
+              "Grow mindmap" to turn it into an
+              interactive diagram.
+            </p>
+          </section>
+        )}
 
         {mindmap && tree && (
           <section className="mt-9">
-            <div className="mb-4 flex flex-wrap items-baseline gap-3.5">
-              <h2 className="m-0 text-[22px] font-bold">
+            <div className="mb-4 flex flex-wrap items-baseline gap-3">
+              <h2 className="text-[22px] font-bold">
                 {mindmap.title}
               </h2>
 
               <span
                 className="text-xs"
-                style={{
-                  color:
-                    theme.muted,
-                }}
+                style={{ color: theme.muted }}
               >
-                {countTreeNodes(
-                  tree
-                )}{" "}
-                ideas
-                {" · "}
-                {maxTreeDepth(
-                  tree
-                )}{" "}
-                branches deep
+                {countTreeNodes(tree)} ideas ·{" "}
+                {maxTreeDepth(tree)} branches deep
               </span>
             </div>
 
-            <MindmapCanvas
-              mindmap={mindmap}
-              theme={theme}
-              selectedNode={
-                selectedNode
-              }
-              onNodeSelect={
-                setSelectedNode
-              }
-            />
+            <div className="flex min-h-[620px] gap-4">
+              {/* Diagram */}
+              <div
+                className={`min-w-0 flex-1 transition-all duration-300 ${selectedNode
+                  ? "lg:w-[calc(100%-340px)]"
+                  : "w-full"
+                  }`}
+              >
+                <MindmapCanvas
+                  mindmap={mindmap}
+                  theme={theme}
+                  selectedNode={selectedNode}
+                  onNodeSelect={setSelectedNode}
+                />
+              </div>
+
+              {/* Details panel */}
+              {selectedNode && (
+                <aside
+                  className="w-[320px] shrink-0 overflow-hidden rounded-2xl border p-5"
+                  style={{
+                    backgroundColor: theme.panelBg,
+                    color: theme.panelText,
+                    borderColor: theme.panelBorder,
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p
+                        className="text-[10px] font-semibold uppercase tracking-[0.12em]"
+                        style={{ color: theme.muted }}
+                      >
+                        Node details
+                      </p>
+
+                      <h3 className="mt-2 text-xl font-bold">
+                        {selectedNode.label}
+                      </h3>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedNode(null)
+                      }
+                      aria-label="Close node details"
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-opacity hover:opacity-70"
+                      style={{
+                        backgroundColor:
+                          theme.chipBg,
+                        color: theme.panelText,
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  <div
+                    className="my-5 h-px"
+                    style={{
+                      backgroundColor:
+                        theme.panelBorder,
+                    }}
+                  />
+
+                  <p
+                    className="text-[10px] font-semibold uppercase tracking-[0.1em]"
+                    style={{ color: theme.muted }}
+                  >
+                    Summary
+                  </p>
+
+                  <p className="mt-2 text-sm leading-6 opacity-80">
+                    {selectedNode.summary}
+                  </p>
+
+                  {(() => {
+                    const childIds = mindmap.connections
+                      .filter(
+                        (connection) =>
+                          connection.from ===
+                          selectedNode.id
+                      )
+                      .map(
+                        (connection) =>
+                          connection.to
+                      );
+
+                    const children = mindmap.nodes.filter(
+                      (node) =>
+                        childIds.includes(node.id)
+                    );
+
+                    if (children.length === 0) {
+                      return null;
+                    }
+
+                    return (
+                      <div className="mt-6">
+                        <p
+                          className="text-[10px] font-semibold uppercase tracking-[0.1em]"
+                          style={{
+                            color: theme.muted,
+                          }}
+                        >
+                          Grows into
+                        </p>
+
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {children.map((child) => (
+                            <button
+                              key={child.id}
+                              type="button"
+                              onClick={() =>
+                                setSelectedNode(
+                                  child
+                                )
+                              }
+                              className="rounded-full border px-3 py-1.5 text-xs transition-opacity hover:opacity-70"
+                              style={{
+                                backgroundColor:
+                                  theme.chipBg,
+                                color:
+                                  theme.panelText,
+                                borderColor:
+                                  theme.panelBorder,
+                              }}
+                            >
+                              {child.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  <div
+                    className="mt-6 border-t pt-4 text-[11px] opacity-40"
+                    style={{
+                      borderColor:
+                        theme.panelBorder,
+                    }}
+                  >
+                    ID: {selectedNode.id}
+                  </div>
+                </aside>
+              )}
+            </div>
           </section>
         )}
       </main>

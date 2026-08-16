@@ -116,8 +116,8 @@ export function useTreeLayout(
                 (d.x - xCenter) * fit,
 
             y:
-                CANVAS_H -
-                PAD -
+                PAD +
+                NODE_H / 2 +
                 d.y * fit,
         });
 
