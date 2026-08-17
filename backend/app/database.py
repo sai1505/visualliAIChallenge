@@ -40,26 +40,33 @@ def save_mindmap(
 ):
     connection = get_connection()
 
-    connection.execute(
-        """
-        INSERT INTO mindmaps (
-            id,
-            title,
-            mindmap_json,
-            created_at
+    try:
+        connection.execute(
+            """
+            INSERT INTO mindmaps (
+                id,
+                title,
+                mindmap_json,
+                created_at
+            )
+            VALUES (?, ?, ?, ?)
+            """,
+            (
+                mindmap_id,
+                mindmap.title,
+                json.dumps(
+                    mindmap.model_dump(
+                        by_alias=True
+                    )
+                ),
+                created_at.isoformat(),
+            ),
         )
-        VALUES (?, ?, ?, ?)
-        """,
-        (
-            mindmap_id,
-            mindmap.title,
-            json.dumps(mindmap.model_dump(by_alias=True)),
-            created_at.isoformat(),
-        ),
-    )
 
-    connection.commit()
-    connection.close()
+        connection.commit()
+
+    finally:
+        connection.close()
 
 
 def get_mindmap(mindmap_id: str):

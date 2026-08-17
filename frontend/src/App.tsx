@@ -1,28 +1,49 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Moon, Sprout, Sun } from "lucide-react";
 import SpecularButton from "./components/SpecularButton";
 
 import MindmapCanvas from "./components/MindmapCanvas";
-import { generateMindmap } from "./api";
+import { generateMindmap, getMindmap, getMindmaps } from "./api";
 
 import { darkTheme, lightTheme } from "./constants/theme";
 
-import type { Mindmap, MindmapNode } from "./types/mindmap";
+import type { Mindmap, MindmapNode, MindmapSummary } from "./types/mindmap";
 
 export default function App() {
   const [mode, setMode] = useState<"dark" | "light">("light");
-
   const theme = mode === "dark" ? darkTheme : lightTheme;
-
   const [text, setText] = useState("");
-
   const [mindmap, setMindmap] = useState<Mindmap | null>(null);
-
+  const [savedMindmaps, setSavedMindmaps] = useState<MindmapSummary[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState("");
   const [selectedNode, setSelectedNode] = useState<MindmapNode | null>(null);
-
   const [loading, setLoading] = useState(false);
-
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function loadHistory() {
+      try {
+        setHistoryLoading(true);
+        setHistoryError("");
+
+        const maps =
+          await getMindmaps();
+
+        setSavedMindmaps(maps);
+      } catch (err) {
+        setHistoryError(
+          err instanceof Error
+            ? err.message
+            : "Failed to load saved mindmaps."
+        );
+      } finally {
+        setHistoryLoading(false);
+      }
+    }
+
+    loadHistory();
+  }, []);
 
   async function handleGenerate() {
     if (!text.trim()) {
@@ -37,12 +58,31 @@ export default function App() {
 
     try {
       console.log("Generating mindmap...");
-      const result = await generateMindmap(text);
-      console.log("Mindmap received:", result);
+      const result =
+        await generateMindmap(text);
+
       setMindmap(result);
 
-      const root = result.nodes.find((node) => node.id === result.rootId);
-      setSelectedNode(root ?? null);
+      const root =
+        result.nodes.find(
+          (node) =>
+            node.id === result.rootId
+        );
+
+      setSelectedNode(
+        root ?? null
+      );
+
+      // Refresh saved history
+      try {
+        const maps =
+          await getMindmaps();
+
+        setSavedMindmaps(maps);
+      } catch {
+        // The generated mindmap itself
+        // is already successfully displayed.
+      }
 
     } catch (err) {
       console.error("Mindmap generation failed:", err);
@@ -54,6 +94,35 @@ export default function App() {
       );
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleLoadMindmap(
+    id: string
+  ) {
+    try {
+      setError("");
+
+      const result =
+        await getMindmap(id);
+
+      setMindmap(result);
+
+      const root =
+        result.nodes.find(
+          (node) =>
+            node.id === result.rootId
+        );
+
+      setSelectedNode(
+        root ?? null
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to load mindmap."
+      );
     }
   }
 
@@ -323,7 +392,132 @@ export default function App() {
               )}
             </div>
           </section>
+
         )}
+        {/* Saved mindmaps */}
+
+        <section
+          className="mt-14 border-t pt-8"
+          style={{
+            borderColor: theme.panelBorder,
+          }}
+        >
+          <div className="mb-5">
+            <h2 className="text-xl font-bold">
+              Saved mindmaps
+            </h2>
+
+            <p
+              className="mt-1 text-sm"
+              style={{
+                color: theme.muted,
+              }}
+            >
+              Your previously generated mindmaps
+            </p>
+          </div>
+
+          {historyLoading ? (
+            <p
+              className="text-sm"
+              style={{
+                color: theme.muted,
+              }}
+            >
+              Loading saved mindmaps...
+            </p>
+          ) : historyError ? (
+            <p
+              className="text-sm"
+              style={{
+                color:
+                  mode === "dark"
+                    ? "#ff8a8a"
+                    : "#c22b2b",
+              }}
+            >
+              {historyError}
+            </p>
+          ) : savedMindmaps.length === 0 ? (
+            <div
+              className="rounded-2xl border px-5 py-8 text-center"
+              style={{
+                borderColor:
+                  theme.panelBorder,
+                backgroundColor:
+                  theme.panelBg,
+                color: theme.muted,
+              }}
+            >
+              <p className="text-sm">
+                No saved mindmaps yet.
+              </p>
+
+              <p className="mt-1 text-xs">
+                Generate your first mindmap
+                and it will appear here.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {savedMindmaps.map((saved) => (
+                <button
+                  key={saved.id}
+                  type="button"
+                  onClick={() =>
+                    handleLoadMindmap(saved.id)
+                  }
+                  className="
+            group
+            rounded-2xl
+            border
+            p-4
+            text-left
+            transition-all
+            duration-200
+            hover:-translate-y-0.5
+          "
+                  style={{
+                    backgroundColor:
+                      theme.panelBg,
+                    color: theme.panelText,
+                    borderColor:
+                      theme.panelBorder,
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="font-semibold">
+                      {saved.title}
+                    </h3>
+
+                    <span
+                      className="
+                shrink-0
+                text-xs
+                opacity-50
+                transition-opacity
+                group-hover:opacity-100
+              "
+                    >
+                      Open
+                    </span>
+                  </div>
+
+                  <p
+                    className="mt-2 text-xs"
+                    style={{
+                      color: theme.muted,
+                    }}
+                  >
+                    {new Date(
+                      saved.createdAt
+                    ).toLocaleString()}
+                  </p>
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
       </main>
     </div>
   );

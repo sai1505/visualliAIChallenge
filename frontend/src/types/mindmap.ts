@@ -18,3 +18,9 @@ export interface Mindmap {
     connections: MindmapConnection[];
     createdAt: string;
 }
+
+export interface MindmapSummary {
+    id: string;
+    title: string;
+    createdAt: string;
+}

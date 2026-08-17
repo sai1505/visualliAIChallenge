@@ -1,5 +1,6 @@
 import datetime
 import json
+import traceback
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, status
@@ -54,11 +55,13 @@ def create_mindmap(request: MindmapCreateRequest):
             detail=str(exc),
         ) from exc
 
-    except Exception:
+    except Exception as exc:
+        traceback.print_exc()
+
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Something went wrong while creating the mindmap. Please try again.",
-        )
+        ) from exc
 
 @router.get(
     "",

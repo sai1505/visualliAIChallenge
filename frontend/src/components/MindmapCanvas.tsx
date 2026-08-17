@@ -594,11 +594,11 @@ export default function MindmapCanvas({
         <Controls
           showInteractive={false}
           className="
-            !overflow-hidden
-            !rounded-xl
-            !border
-            !shadow-md
-        "
+        !overflow-hidden
+        !rounded-xl
+        !border
+        !shadow-md
+  "
         />
       </ReactFlow>
     </div>

@@ -1,4 +1,7 @@
-import type { Mindmap } from "./types/mindmap";
+import type {
+  Mindmap,
+  MindmapSummary,
+} from "./types/mindmap";
 
 const API_URL =
   import.meta.env.VITE_API_URL ||
@@ -11,45 +14,84 @@ export async function generateMindmap(
     `${API_URL}/api/mindmaps`,
     {
       method: "POST",
-
       headers: {
         "Content-Type": "application/json",
       },
-
-      body: JSON.stringify({
-        text,
-      }),
+      body: JSON.stringify({ text }),
     }
   );
 
   if (!response.ok) {
     let message =
-      `Request failed with status ${response.status}`;
+      "Failed to generate mindmap";
 
     try {
       const error =
         await response.json();
 
-      if (
-        typeof error.detail ===
-        "string"
-      ) {
+      if (typeof error.detail === "string") {
         message = error.detail;
-      } else if (
-        Array.isArray(error.detail)
-      ) {
-        message = error.detail
-          .map(
-            (item: {
-              msg?: string;
-            }) =>
-              item.msg
-          )
-          .filter(Boolean)
-          .join(", ");
       }
     } catch {
-      // Keep status-based message.
+      // Keep default message.
+    }
+
+    throw new Error(message);
+  }
+
+  return response.json();
+}
+
+
+export async function getMindmaps(): Promise<
+  MindmapSummary[]
+> {
+  const response = await fetch(
+    `${API_URL}/api/mindmaps`
+  );
+
+  if (!response.ok) {
+    let message =
+      "Failed to load saved mindmaps";
+
+    try {
+      const error =
+        await response.json();
+
+      if (typeof error.detail === "string") {
+        message = error.detail;
+      }
+    } catch {
+      // Keep default message.
+    }
+
+    throw new Error(message);
+  }
+
+  return response.json();
+}
+
+
+export async function getMindmap(
+  id: string
+): Promise<Mindmap> {
+  const response = await fetch(
+    `${API_URL}/api/mindmaps/${id}`
+  );
+
+  if (!response.ok) {
+    let message =
+      "Failed to load mindmap";
+
+    try {
+      const error =
+        await response.json();
+
+      if (typeof error.detail === "string") {
+        message = error.detail;
+      }
+    } catch {
+      // Keep default message.
     }
 
     throw new Error(message);
