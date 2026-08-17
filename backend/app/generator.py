@@ -5,14 +5,14 @@ from dotenv import load_dotenv
 from groq import Groq
 from pydantic import ValidationError
 
-from app.models import Mindmap
 from app.models import (
     Mindmap,
     MindmapOutline,
     MindmapEnrichment,
     Connection,
-    Node
+    Node,
 )
+
 from app.validators import (
     validate_outline,
     validate_enrichment,
@@ -26,10 +26,51 @@ MAX_ATTEMPTS = 2
 
 
 # ============================================================
+# NODE COUNT GUIDANCE
+# ============================================================
+
+def get_node_guidance(text: str) -> str:
+    """
+    Provide a rough node-count guideline based on source length.
+
+    This is only guidance for the LLM. It is NOT a hard target.
+    Semantic coverage always takes priority.
+    """
+
+    word_count = len(text.split())
+
+    if word_count <= 50:
+        return (
+            "The source is very short. "
+            "Prefer approximately 3-5 meaningful nodes."
+        )
+
+    if word_count <= 150:
+        return (
+            "The source is short. "
+            "Prefer approximately 4-6 meaningful nodes."
+        )
+
+    if word_count <= 400:
+        return (
+            "The source is medium-sized. "
+            "Prefer approximately 5-7 meaningful nodes."
+        )
+
+    return (
+        "The source is long or conceptually rich. "
+        "Use approximately 7-9 meaningful nodes "
+        "when the source supports them."
+    )
+
+
+# ============================================================
 # PHASE 1 — OUTLINE
 # ============================================================
 
 def build_outline_prompt(text: str) -> str:
+    node_guidance = get_node_guidance(text)
+
     return f"""
 You are a mindmap structure generation system.
 
@@ -72,15 +113,22 @@ Required structure:
 
 Rules:
 
-- Create 5 to 9 meaningful nodes total, including the root.
+- Determine the number of nodes from the amount and complexity
+  of the source material.
 - The root node counts toward the total.
-- For short or simple source material, 5 to 6 nodes are acceptable.
-- For richer source material, prefer 7 to 9 nodes.
-- For source material longer than 5000 characters, prefer 8 to 9 nodes when enough distinct concepts are available.
-- For source material longer than 10000 characters, strongly prefer 9 nodes when the source supports them.
-- Do not stop at 5 or 6 nodes when the source contains additional important concepts.
-- Do not create nodes merely to reach the maximum.
-- Prefer meaningful concepts over redundant or invented concepts.
+- Every node must represent a distinct concept supported by the source.
+- Never create nodes merely to increase the node count.
+
+- {node_guidance}
+- The node-count guidance is a preference, NOT a hard target.
+- Semantic coverage and usefulness are more important than node count.
+- If the source only contains a few meaningful concepts, create fewer
+  nodes rather than padding the mindmap.
+- Do not artificially expand a short source into many nodes.
+- Do not split one simple concept into multiple nodes just to increase
+  the node count.
+- Do not invent concepts that are not supported by the source.
+- Do not create redundant nodes.
 
 - Build a hierarchical mindmap, not just a flat list.
 - Do not make every non-root node a direct child of the root unless appropriate.
@@ -111,6 +159,9 @@ def build_outline_repair_prompt(
     text: str,
     error: str,
 ) -> str:
+
+    node_guidance = get_node_guidance(text)
+
     return f"""
 Generate a valid mindmap OUTLINE from the source text.
 
@@ -129,6 +180,7 @@ Validation error:
 Fix the validation problem.
 
 IMPORTANT:
+
 Generate ONLY the outline.
 Do NOT generate summaries.
 
@@ -160,16 +212,27 @@ Required structure:
 
 Rules:
 
-- Create 5 to 9 meaningful nodes total.
+- Determine the number of nodes from the amount and complexity
+  of the source material.
 - The root counts toward the total.
-- Prefer 7 to 9 nodes for richer source material.
-- Prefer 8 to 9 nodes for source material longer than 5000 characters when enough concepts exist.
-- Do not create redundant or invented nodes.
-- Build a meaningful hierarchy.
+- Every node must represent a distinct concept supported by the source.
+
+- {node_guidance}
+- The node-count guidance is a preference, NOT a hard target.
+- Semantic coverage is more important than node count.
+- If fewer concepts are supported by the source, use fewer nodes.
+- Do not artificially expand a short source.
+- Do not create redundant nodes.
+- Do not invent concepts.
 - Do not create artificial intermediate nodes.
 
+- Build a meaningful hierarchy.
+- Group related concepts where appropriate.
+- Do not make every node a direct child of the root unless appropriate.
+
 - Root ID MUST be "root".
-- All other IDs MUST be node_1, node_2, node_3, etc.
+- All other IDs must be:
+  node_1, node_2, node_3, etc.
 - IDs must be unique.
 - Connections must reference existing nodes.
 - No self-connections.
@@ -185,6 +248,7 @@ def parse_and_validate_outline(
 
     try:
         data = json.loads(content)
+
     except json.JSONDecodeError as exc:
         raise ValueError(
             "LLM returned invalid JSON for outline"
@@ -192,6 +256,7 @@ def parse_and_validate_outline(
 
     try:
         outline = MindmapOutline.model_validate(data)
+
     except ValidationError as exc:
         raise ValueError(
             f"Outline failed schema validation: {exc}"
@@ -337,15 +402,17 @@ def parse_and_validate_enrichment(
 
     try:
         data = json.loads(content)
+
     except json.JSONDecodeError as exc:
         raise ValueError(
             "LLM returned invalid JSON for enrichment"
         ) from exc
 
     try:
-        enrichment = (
-            MindmapEnrichment.model_validate(data)
+        enrichment = MindmapEnrichment.model_validate(
+            data
         )
+
     except ValidationError as exc:
         raise ValueError(
             f"Enrichment failed schema validation: {exc}"
@@ -374,6 +441,7 @@ def combine_mindmap(
     nodes = []
 
     for node in outline.nodes:
+
         summary = summaries.get(node.id)
 
         if summary is None:
@@ -421,7 +489,9 @@ def get_groq_client() -> Groq:
             "GROQ_API_KEY is not configured"
         )
 
-    return Groq(api_key=api_key)
+    return Groq(
+        api_key=api_key
+    )
 
 
 # ============================================================
@@ -433,13 +503,20 @@ def generate_outline(
     text: str,
 ) -> MindmapOutline:
 
-    last_error = "Unknown outline generation error"
+    last_error = (
+        "Unknown outline generation error"
+    )
 
     for attempt in range(MAX_ATTEMPTS):
 
         if attempt == 0:
-            prompt = build_outline_prompt(text)
+
+            prompt = build_outline_prompt(
+                text
+            )
+
         else:
+
             prompt = build_outline_repair_prompt(
                 text,
                 last_error,
@@ -467,23 +544,28 @@ def generate_outline(
         )
 
         content = (
-            response.choices[0]
+            response
+            .choices[0]
             .message
             .content
         )
 
         if not content:
+
             last_error = (
                 "LLM returned an empty outline"
             )
+
             continue
 
         try:
+
             return parse_and_validate_outline(
                 content
             )
 
         except ValueError as exc:
+
             last_error = str(exc)
 
             print(
@@ -515,17 +597,18 @@ def generate_enrichment(
     for attempt in range(MAX_ATTEMPTS):
 
         if attempt == 0:
+
             prompt = build_enrichment_prompt(
                 text,
                 outline,
             )
+
         else:
-            prompt = (
-                build_enrichment_repair_prompt(
-                    text,
-                    outline,
-                    last_error,
-                )
+
+            prompt = build_enrichment_repair_prompt(
+                text,
+                outline,
+                last_error,
             )
 
         response = client.chat.completions.create(
@@ -550,24 +633,29 @@ def generate_enrichment(
         )
 
         content = (
-            response.choices[0]
+            response
+            .choices[0]
             .message
             .content
         )
 
         if not content:
+
             last_error = (
                 "LLM returned an empty enrichment"
             )
+
             continue
 
         try:
+
             return parse_and_validate_enrichment(
                 content,
                 outline,
             )
 
         except ValueError as exc:
+
             last_error = str(exc)
 
             print(
@@ -587,6 +675,7 @@ def generate_enrichment(
 # ============================================================
 
 def get_mock_mindmap() -> Mindmap:
+
     return Mindmap.model_validate(
         {
             "title": "Machine Learning",
@@ -663,17 +752,22 @@ def get_mock_mindmap() -> Mindmap:
 # MAIN GENERATION PIPELINE
 # ============================================================
 
-def generate_mindmap(text: str) -> Mindmap:
+def generate_mindmap(
+    text: str,
+    on_phase=None,
+) -> Mindmap:
 
     text = text.strip()
 
     if not text:
+
         raise ValueError(
             "Please enter some text before "
             "generating a mindmap."
         )
 
     if len(text) < 30:
+
         raise ValueError(
             "The text is too short to create "
             "a meaningful mindmap. "
@@ -698,12 +792,28 @@ def generate_mindmap(text: str) -> Mindmap:
     # Phase 1: Structure
     # -----------------------------
 
-    print("Mindmap Phase 1: generating outline...")
+    if on_phase:
+        on_phase("outline_started")
+
+    print(
+        "Mindmap Phase 1: "
+        "generating outline..."
+    )
 
     outline = generate_outline(
         client,
         text,
     )
+
+    if on_phase:
+        on_phase(
+            "outline_completed",
+            {
+                "nodeCount": len(
+                    outline.nodes
+                )
+            },
+        )
 
     print(
         f"Mindmap Phase 1 complete: "
@@ -715,8 +825,14 @@ def generate_mindmap(text: str) -> Mindmap:
     # -----------------------------
 
     print(
-        "Mindmap Phase 2: generating summaries..."
+        "Mindmap Phase 2: "
+        "generating summaries..."
     )
+
+    if on_phase:
+        on_phase(
+            "enrichment_started"
+        )
 
     enrichment = generate_enrichment(
         client,
@@ -727,6 +843,11 @@ def generate_mindmap(text: str) -> Mindmap:
     print(
         "Mindmap Phase 2 complete"
     )
+
+    if on_phase:
+        on_phase(
+            "enrichment_completed"
+        )
 
     # -----------------------------
     # Combine
@@ -741,4 +862,6 @@ def generate_mindmap(text: str) -> Mindmap:
     # Final backstop validation
     # -----------------------------
 
-    return validate_mindmap(mindmap)
+    return validate_mindmap(
+        mindmap
+    )

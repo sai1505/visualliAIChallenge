@@ -3,7 +3,11 @@ import { Moon, Sprout, Sun } from "lucide-react";
 import SpecularButton from "./components/SpecularButton";
 
 import MindmapCanvas from "./components/MindmapCanvas";
-import { generateMindmap, getMindmap, getMindmaps } from "./api";
+import {
+  generateMindmapStream,
+  getMindmap,
+  getMindmaps,
+} from "./api";
 
 import { darkTheme, lightTheme } from "./constants/theme";
 
@@ -20,6 +24,8 @@ export default function App() {
   const [selectedNode, setSelectedNode] = useState<MindmapNode | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [generationPhase, setGenerationPhase] =
+    useState("");
 
   useEffect(() => {
     async function loadHistory() {
@@ -47,7 +53,9 @@ export default function App() {
 
   async function handleGenerate() {
     if (!text.trim()) {
-      setError("Give it a sentence or two to grow a tree from.");
+      setError(
+        "Give it a sentence or two to grow a tree from."
+      );
       return;
     }
 
@@ -55,11 +63,45 @@ export default function App() {
     setError("");
     setMindmap(null);
     setSelectedNode(null);
+    setGenerationPhase("Starting...");
 
     try {
       console.log("Generating mindmap...");
+
       const result =
-        await generateMindmap(text);
+        await generateMindmapStream(
+          text,
+          {
+            onPhase: (phase, data) => {
+              switch (phase) {
+                case "outline_started":
+                  setGenerationPhase(
+                    "Building the mindmap structure..."
+                  );
+                  break;
+
+                case "outline_completed":
+                  setGenerationPhase(
+                    `Structure created — ${data.nodeCount ?? ""
+                    } ideas found.`
+                  );
+                  break;
+
+                case "enrichment_started":
+                  setGenerationPhase(
+                    "Writing node summaries..."
+                  );
+                  break;
+
+                case "enrichment_completed":
+                  setGenerationPhase(
+                    "Finishing your mindmap..."
+                  );
+                  break;
+              }
+            },
+          }
+        );
 
       setMindmap(result);
 
@@ -69,9 +111,9 @@ export default function App() {
             node.id === result.rootId
         );
 
-      setSelectedNode(
-        root ?? null
-      );
+      setSelectedNode(root ?? null);
+
+      setGenerationPhase("");
 
       // Refresh saved history
       try {
@@ -80,18 +122,21 @@ export default function App() {
 
         setSavedMindmaps(maps);
       } catch {
-        // The generated mindmap itself
-        // is already successfully displayed.
+        // Mindmap itself was generated successfully.
       }
-
     } catch (err) {
-      console.error("Mindmap generation failed:", err);
+      console.error(
+        "Mindmap generation failed:",
+        err
+      );
 
       setError(
         err instanceof Error
           ? err.message
-          : "Something went wrong while generating the mindmap.",
+          : "Something went wrong while generating the mindmap."
       );
+
+      setGenerationPhase("");
     } finally {
       setLoading(false);
     }
@@ -155,7 +200,6 @@ export default function App() {
           </div>
 
           {/* Theme toggle */}
-
           <button
             type="button"
             onClick={() => setMode((m) => (m === "dark" ? "light" : "dark"))}
@@ -172,7 +216,6 @@ export default function App() {
         </header>
 
         {/* Input */}
-
         <section
           className="mt-8 rounded-[20px] border p-[22px]"
           style={{
@@ -235,6 +278,26 @@ export default function App() {
             </p>
           )}
         </section>
+
+        {loading && (
+          <section
+            className="mt-8 rounded-2xl border px-5 py-4"
+            style={{
+              backgroundColor: theme.panelBg,
+              color: theme.panelText,
+              borderColor: theme.panelBorder,
+            }}
+            aria-live="polite"
+          >
+            <div className="flex items-center gap-3">
+              <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-current" />
+
+              <p className="text-sm font-medium">
+                {generationPhase}
+              </p>
+            </div>
+          </section>
+        )}
 
         {/* Mindmap */}
         {!mindmap && !loading && (
