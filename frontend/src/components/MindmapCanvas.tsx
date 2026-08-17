@@ -5,6 +5,7 @@ import {
 } from "react";
 
 import {
+  Controls,
   Handle,
   Position,
   ReactFlow,
@@ -566,59 +567,40 @@ export default function MindmapCanvas({
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        nodeTypes={
-          nodeTypes
-        }
-
-        onNodeClick={
-          handleNodeClick
-        }
-
-        onPaneClick={() =>
-          onNodeSelect(null)
-        }
-
-        nodesDraggable={
-          false
-        }
-
-        nodesConnectable={
-          false
-        }
-
-        elementsSelectable={
-          true
-        }
-
+        nodeTypes={nodeTypes}
+        onNodeClick={handleNodeClick}
+        onPaneClick={() => onNodeSelect(null)}
+        nodesDraggable={false}
+        nodesConnectable={false}
+        elementsSelectable={true}
         fitView
-
         fitViewOptions={{
           padding: 0.18,
-
           minZoom: 0.35,
-
           maxZoom: 1.4,
         }}
-
         minZoom={0.25}
-
         maxZoom={2}
-
         defaultEdgeOptions={{
-          type:
-            "smoothstep",
+          type: "smoothstep",
         }}
-
         proOptions={{
-          hideAttribution:
-            false,
+          hideAttribution: true,
         }}
-
         style={{
-          background:
-            theme.canvasBg,
+          background: theme.canvasBg,
         }}
-      />
+      >
+        <Controls
+          showInteractive={false}
+          className="
+            !overflow-hidden
+            !rounded-xl
+            !border
+            !shadow-md
+        "
+        />
+      </ReactFlow>
     </div>
   );
 }
