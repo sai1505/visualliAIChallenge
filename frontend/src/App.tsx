@@ -5,49 +5,28 @@ import SpecularButton from "./components/SpecularButton";
 import MindmapCanvas from "./components/MindmapCanvas";
 import { generateMindmap } from "./api";
 
-import {
-  mindmapToTree,
-  countTreeNodes,
-  maxTreeDepth,
-} from "./lib/mindmapToTree";
-
 import { darkTheme, lightTheme } from "./constants/theme";
 
-import type {
-  Mindmap,
-  MindmapNode,
-} from "./types/mindmap";
-
+import type { Mindmap, MindmapNode } from "./types/mindmap";
 
 export default function App() {
-  const [mode, setMode] =
-    useState<"dark" | "light">("light");
+  const [mode, setMode] = useState<"dark" | "light">("light");
 
-  const theme =
-    mode === "dark"
-      ? darkTheme
-      : lightTheme;
+  const theme = mode === "dark" ? darkTheme : lightTheme;
 
-  const [text, setText] =
-    useState("");
+  const [text, setText] = useState("");
 
-  const [mindmap, setMindmap] =
-    useState<Mindmap | null>(null);
+  const [mindmap, setMindmap] = useState<Mindmap | null>(null);
 
-  const [selectedNode, setSelectedNode] =
-    useState<MindmapNode | null>(null);
+  const [selectedNode, setSelectedNode] = useState<MindmapNode | null>(null);
 
-  const [loading, setLoading] =
-    useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const [error, setError] =
-    useState("");
+  const [error, setError] = useState("");
 
   async function handleGenerate() {
     if (!text.trim()) {
-      setError(
-        "Give it a sentence or two to grow a tree from."
-      );
+      setError("Give it a sentence or two to grow a tree from.");
       return;
     }
 
@@ -57,51 +36,26 @@ export default function App() {
     setSelectedNode(null);
 
     try {
-      console.log(
-        "Generating mindmap..."
-      );
-
-      const result =
-        await generateMindmap(text);
-
-      console.log(
-        "Mindmap received:",
-        result
-      );
-
+      console.log("Generating mindmap...");
+      const result = await generateMindmap(text);
+      console.log("Mindmap received:", result);
       setMindmap(result);
 
-      const root =
-        result.nodes.find(
-          (node) =>
-            node.id ===
-            result.rootId
-        );
+      const root = result.nodes.find((node) => node.id === result.rootId);
+      setSelectedNode(root ?? null);
 
-      setSelectedNode(
-        root ?? null
-      );
     } catch (err) {
-      console.error(
-        "Mindmap generation failed:",
-        err
-      );
+      console.error("Mindmap generation failed:", err);
 
       setError(
         err instanceof Error
           ? err.message
-          : "Something went wrong while generating the mindmap."
+          : "Something went wrong while generating the mindmap.",
       );
     } finally {
       setLoading(false);
     }
   }
-
-  const tree = mindmap
-    ? mindmapToTree(mindmap)
-    : null;
-
-
 
   return (
     <div
@@ -126,10 +80,8 @@ export default function App() {
                 color: theme.muted,
               }}
             >
-              Paste in a paragraph. It
-              grows roots, branches,
-              and leaves you can click
-              through.
+              Paste in a paragraph. It grows roots, branches, and leaves you can
+              click through.
             </p>
           </div>
 
@@ -137,29 +89,16 @@ export default function App() {
 
           <button
             type="button"
-            onClick={() =>
-              setMode((m) =>
-                m === "dark"
-                  ? "light"
-                  : "dark"
-              )
-            }
+            onClick={() => setMode((m) => (m === "dark" ? "light" : "dark"))}
             aria-label="Toggle light and dark mode"
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-all duration-200 hover:scale-105"
             style={{
-              backgroundColor:
-                theme.panelBg,
-              color:
-                theme.panelText,
-              borderColor:
-                theme.panelBorder,
+              backgroundColor: theme.panelBg,
+              color: theme.panelText,
+              borderColor: theme.panelBorder,
             }}
           >
-            {mode === "dark" ? (
-              <Sun size={17} />
-            ) : (
-              <Moon size={17} />
-            )}
+            {mode === "dark" ? <Sun size={17} /> : <Moon size={17} />}
           </button>
         </header>
 
@@ -168,21 +107,14 @@ export default function App() {
         <section
           className="mt-8 rounded-[20px] border p-[22px]"
           style={{
-            backgroundColor:
-              theme.panelBg,
-            color:
-              theme.panelText,
-            borderColor:
-              theme.panelBorder,
+            backgroundColor: theme.panelBg,
+            color: theme.panelText,
+            borderColor: theme.panelBorder,
           }}
         >
           <textarea
             value={text}
-            onChange={(e) =>
-              setText(
-                e.target.value
-              )
-            }
+            onChange={(e) => setText(e.target.value)}
             placeholder="Paste your text here…"
             rows={6}
             className="w-full resize-none border-none bg-transparent text-[15px] leading-[1.6] outline-none placeholder:opacity-40"
@@ -218,9 +150,7 @@ export default function App() {
             >
               <div className="flex items-center gap-2">
                 <Sprout size={16} />
-                <span>
-                  {loading ? "Growing..." : "Grow mindmap"}
-                </span>
+                <span>{loading ? "Growing..." : "Grow mindmap"}</span>
               </div>
             </SpecularButton>
           </div>
@@ -229,10 +159,7 @@ export default function App() {
             <p
               className="mt-2.5 text-[13px]"
               style={{
-                color:
-                  mode === "dark"
-                    ? "#ff8a8a"
-                    : "#c22b2b",
+                color: mode === "dark" ? "#ff8a8a" : "#c22b2b",
               }}
             >
               {error}
@@ -243,45 +170,34 @@ export default function App() {
         {/* Mindmap */}
         {!mindmap && !loading && (
           <section className="mt-12 flex flex-col items-center justify-center px-6 py-16 text-center">
-            <Sprout
-              size={32}
-              className="mb-4 opacity-40"
-            />
+            <Sprout size={32} className="mb-4 opacity-40" />
 
             <h2 className="text-lg font-semibold">
               Your mindmap will grow here
             </h2>
 
             <p className="mt-2 max-w-md text-sm opacity-60">
-              Paste some text above and click
-              "Grow mindmap" to turn it into an
+              Paste some text above and click "Grow mindmap" to turn it into an
               interactive diagram.
             </p>
           </section>
         )}
 
-        {mindmap && tree && (
+        {mindmap && (
           <section className="mt-9">
             <div className="mb-4 flex flex-wrap items-baseline gap-3">
-              <h2 className="text-[22px] font-bold">
-                {mindmap.title}
-              </h2>
+              <h2 className="text-[22px] font-bold">{mindmap.title}</h2>
 
-              <span
-                className="text-xs"
-                style={{ color: theme.muted }}
-              >
-                {countTreeNodes(tree)} ideas ·{" "}
-                {maxTreeDepth(tree)} branches deep
+              <span className="text-xs" style={{ color: theme.muted }}>
+                {mindmap.nodes.length} ideas
+                deep
               </span>
             </div>
 
             <div className="flex min-h-[620px] gap-4">
               {/* Diagram */}
               <div
-                className={`min-w-0 flex-1 transition-all duration-300 ${selectedNode
-                  ? "lg:w-[calc(100%-340px)]"
-                  : "w-full"
+                className={`min-w-0 flex-1 transition-all duration-300 ${selectedNode ? "lg:w-[calc(100%-340px)]" : "w-full"
                   }`}
               >
                 <MindmapCanvas
@@ -318,14 +234,11 @@ export default function App() {
 
                     <button
                       type="button"
-                      onClick={() =>
-                        setSelectedNode(null)
-                      }
+                      onClick={() => setSelectedNode(null)}
                       aria-label="Close node details"
                       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-opacity hover:opacity-70"
                       style={{
-                        backgroundColor:
-                          theme.chipBg,
+                        backgroundColor: theme.chipBg,
                         color: theme.panelText,
                       }}
                     >
@@ -336,8 +249,7 @@ export default function App() {
                   <div
                     className="my-5 h-px"
                     style={{
-                      backgroundColor:
-                        theme.panelBorder,
+                      backgroundColor: theme.panelBorder,
                     }}
                   />
 
@@ -355,18 +267,12 @@ export default function App() {
                   {(() => {
                     const childIds = mindmap.connections
                       .filter(
-                        (connection) =>
-                          connection.from ===
-                          selectedNode.id
+                        (connection) => connection.from === selectedNode.id,
                       )
-                      .map(
-                        (connection) =>
-                          connection.to
-                      );
+                      .map((connection) => connection.to);
 
-                    const children = mindmap.nodes.filter(
-                      (node) =>
-                        childIds.includes(node.id)
+                    const children = mindmap.nodes.filter((node) =>
+                      childIds.includes(node.id),
                     );
 
                     if (children.length === 0) {
@@ -389,19 +295,12 @@ export default function App() {
                             <button
                               key={child.id}
                               type="button"
-                              onClick={() =>
-                                setSelectedNode(
-                                  child
-                                )
-                              }
+                              onClick={() => setSelectedNode(child)}
                               className="rounded-full border px-3 py-1.5 text-xs transition-opacity hover:opacity-70"
                               style={{
-                                backgroundColor:
-                                  theme.chipBg,
-                                color:
-                                  theme.panelText,
-                                borderColor:
-                                  theme.panelBorder,
+                                backgroundColor: theme.chipBg,
+                                color: theme.panelText,
+                                borderColor: theme.panelBorder,
                               }}
                             >
                               {child.label}
@@ -415,8 +314,7 @@ export default function App() {
                   <div
                     className="mt-6 border-t pt-4 text-[11px] opacity-40"
                     style={{
-                      borderColor:
-                        theme.panelBorder,
+                      borderColor: theme.panelBorder,
                     }}
                   >
                     ID: {selectedNode.id}

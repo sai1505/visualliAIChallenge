@@ -57,20 +57,40 @@ Required structure:
 
 Rules:
 
-- Create 5 to 9 nodes.
+- Create 5 to 9 meaningful nodes total, including the root.
+- The root node counts toward the total node count.
+- For short or simple source material, 5 to 6 nodes are acceptable.
+- For richer source material, prefer 7 to 9 nodes.
+- For source material longer than 5000 characters, prefer 8 to 9 nodes when enough distinct concepts are available.
+- For source material longer than 10000 characters, strongly prefer 9 nodes when the source supports them.
+- Do not stop at 5 or 6 nodes when the source contains additional important, distinct concepts.
+- Do not create nodes merely to reach the maximum.
+- Prefer meaningful concepts over redundant, repetitive, or invented concepts.
+
+- Build a hierarchical mindmap, not just a flat list of concepts.
+- Do not make every non-root node a direct child of the root unless the source genuinely describes independent concepts.
+- When related concepts have meaningful parent-child relationships, group them under an appropriate intermediate node.
+- Prefer a balanced tree with multiple levels when the source material supports it.
+- The root should normally have no more than 3 to 5 direct children when further hierarchy is possible.
+- Use deeper nodes to represent specific concepts, details, examples, or subtopics.
+
 - The root node MUST have id "root".
-- All other node IDs MUST use this format:
+- All other node IDs MUST use this exact format:
   "node_1", "node_2", "node_3", etc.
 - Node IDs must be unique.
 - rootId MUST be "root".
-- Every connection must reference an existing node ID.
+- Every connection MUST reference an existing node ID.
 - Do not create self-connections.
+
 - Labels must contain 1 to 4 words.
-- Summaries must be concise.
-- The root should represent the main concept.
-- Connections should represent meaningful relationships from the source text.
-- Do not invent unrelated concepts.
-- Return ONLY JSON.
+- Summaries must be concise and accurately describe the source material.
+- The root should represent the main concept of the source material.
+- Connections should represent meaningful relationships explicitly supported by the source text.
+- Do not invent unrelated concepts or information.
+- Do not merge clearly distinct important concepts merely to reduce the node count.
+- Do not create artificial intermediate nodes solely to make the tree deeper.
+
+- Return ONLY valid JSON.
 """
 
 
@@ -96,19 +116,40 @@ Return ONLY a JSON object.
 
 Requirements:
 
-- Create 5 to 9 nodes.
+- Create 5 to 9 meaningful nodes total, including the root.
+- The root node counts toward the total node count.
+- For short or simple source material, 5 to 6 nodes are acceptable.
+- For richer source material, prefer 7 to 9 nodes.
+- For source material longer than 5000 characters, prefer 8 to 9 nodes when enough distinct concepts are available.
+- For source material longer than 10000 characters, strongly prefer 9 nodes when the source supports them.
+- Do not stop at 5 or 6 nodes when the source contains additional important, distinct concepts.
+- Do not create nodes merely to reach the maximum.
+- Prefer meaningful concepts over redundant, repetitive, or invented concepts.
+
+- Build a hierarchical mindmap, not just a flat list of concepts.
+- Do not make every non-root node a direct child of the root unless the source genuinely describes independent concepts.
+- When related concepts have meaningful parent-child relationships, group them under an appropriate intermediate node.
+- Prefer a balanced tree with multiple levels when the source material supports it.
+- The root should normally have no more than 3 to 5 direct children when further hierarchy is possible.
+- Use deeper nodes to represent specific concepts, details, examples, or subtopics.
+
 - The root node MUST have id "root".
-- All other node IDs MUST use:
+- All other node IDs MUST use this exact format:
   "node_1", "node_2", "node_3", etc.
 - Node IDs must be unique.
 - rootId MUST be "root".
-- Every connection must reference an existing node ID.
+- Every connection MUST reference an existing node ID.
 - Do not create self-connections.
+
 - Labels must contain 1 to 4 words.
-- Summaries must be concise.
-- The root should represent the main concept.
-- Connections should represent meaningful relationships from the source text.
-- Return ONLY JSON.
+- Summaries must be concise and accurately describe the source material.
+- The root should represent the main concept of the source material.
+- Connections should represent meaningful relationships explicitly supported by the source text.
+- Do not invent unrelated concepts or information.
+- Do not merge clearly distinct important concepts merely to reduce the node count.
+- Do not create artificial intermediate nodes solely to make the tree deeper.
+
+- Return ONLY valid JSON.
 """
 
 
@@ -247,7 +288,23 @@ def get_mock_mindmap() -> Mindmap:
 
 
 def generate_mindmap(text: str) -> Mindmap:
-    mock_mode = os.getenv("MOCK_MODE", "false").lower() == "true"
+    text = text.strip()
+
+    if not text:
+        raise ValueError(
+            "Please enter some text before generating a mindmap."
+        )
+
+    if len(text) < 30:
+        raise ValueError(
+            "The text is too short to create a meaningful mindmap. "
+            "Please provide at least a sentence or two."
+        )
+
+    mock_mode = (
+        os.getenv("MOCK_MODE", "true").lower()
+        == "true"
+    )
 
     if mock_mode:
         return get_mock_mindmap()

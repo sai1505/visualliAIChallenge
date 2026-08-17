@@ -1,62 +1,59 @@
 import type { Mindmap } from "./types/mindmap";
 
 const API_URL =
-    import.meta.env.VITE_API_URL ||
-    "http://localhost:8000";
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:8000";
 
 export async function generateMindmap(
-    text: string
+  text: string
 ): Promise<Mindmap> {
-    console.log(
-        "POST:",
-        `${API_URL}/api/mindmaps`
-    );
+  const response = await fetch(
+    `${API_URL}/api/mindmaps`,
+    {
+      method: "POST",
 
-    const response = await fetch(
-        `${API_URL}/api/mindmaps`,
-        {
-            method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
 
-            headers: {
-                "Content-Type":
-                    "application/json",
-            },
-
-            body: JSON.stringify({
-                text,
-            }),
-        }
-    );
-
-    if (!response.ok) {
-        let message =
-            "Failed to generate mindmap";
-
-        try {
-            const error =
-                await response.json();
-
-            if (
-                typeof error.detail ===
-                "string"
-            ) {
-                message =
-                    error.detail;
-            }
-        } catch {
-            // Keep default message.
-        }
-
-        throw new Error(message);
+      body: JSON.stringify({
+        text,
+      }),
     }
+  );
 
-    const data =
+  if (!response.ok) {
+    let message =
+      `Request failed with status ${response.status}`;
+
+    try {
+      const error =
         await response.json();
 
-    console.log(
-        "Mindmap API response:",
-        data
-    );
+      if (
+        typeof error.detail ===
+        "string"
+      ) {
+        message = error.detail;
+      } else if (
+        Array.isArray(error.detail)
+      ) {
+        message = error.detail
+          .map(
+            (item: {
+              msg?: string;
+            }) =>
+              item.msg
+          )
+          .filter(Boolean)
+          .join(", ");
+      }
+    } catch {
+      // Keep status-based message.
+    }
 
-    return data;
+    throw new Error(message);
+  }
+
+  return response.json();
 }

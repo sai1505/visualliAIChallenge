@@ -1,79 +1,339 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  memo,
+  useEffect,
+  useMemo,
+} from "react";
 
-import type { MouseEvent as ReactMouseEvent, WheelEvent } from "react";
+import {
+  Handle,
+  Position,
+  ReactFlow,
+  type Edge,
+  type Node,
+  type NodeProps,
+} from "@xyflow/react";
 
-import { RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
+import dagre from "@dagrejs/dagre";
 
-import type { Mindmap, MindmapNode } from "../types/mindmap";
+import type {
+  Mindmap,
+  MindmapNode,
+} from "../types/mindmap";
 
 import type { Theme } from "../constants/theme";
 
-import { useTreeLayout } from "../lib/useTreeLayout";
 
-import { mindmapToTree, type TreeNode } from "../lib/mindmapToTree";
-
-import { wrapLabel } from "../lib/treeUtils";
-
-import { CANVAS_H, CANVAS_W, NODE_H, NODE_W } from "../constants/theme";
-
-import CanvasButton from "./CanvasButton";
+/* =========================================================
+   Types
+   ========================================================= */
 
 interface MindmapCanvasProps {
   mindmap: Mindmap;
   theme: Theme;
   selectedNode: MindmapNode | null;
-  onNodeSelect: (node: MindmapNode | null) => void;
+  onNodeSelect: (
+    node: MindmapNode | null
+  ) => void;
 }
 
-/* ---------------------------------- */
-/* Node styling */
-/* ---------------------------------- */
 
-function nodeStyle(theme: Theme, depth: number, selected: boolean) {
-  const isRoot = depth === 0;
+type MindmapNodeData = {
+  node: MindmapNode;
+  depth: number;
+  theme: Theme;
+} & Record<string, unknown>;
 
-  const fade = Math.max(0.35, 0.95 - depth * 0.22);
 
-  return {
-    fill: isRoot ? theme.ink : theme.canvasBg,
+type MindmapFlowNodeType =
+  Node<
+    MindmapNodeData,
+    "mindmap"
+  >;
 
-    text: isRoot ? theme.canvasBg : theme.ink,
 
-    stroke: theme.ink,
+/* =========================================================
+   Constants
+   ========================================================= */
 
-    strokeOpacity: selected ? 1 : isRoot ? 1 : fade,
+const NODE_WIDTH = 190;
+const NODE_HEIGHT = 68;
 
-    strokeWidth: selected ? 2.5 : isRoot ? 2 : 1.4,
-  };
-}
+const RANK_SEPARATION = 80;
+const NODE_SEPARATION = 30;
 
-/* ---------------------------------- */
-/* Find node */
-/* ---------------------------------- */
 
-function findTreeNode(root: TreeNode | null, id: string): TreeNode | null {
-  if (!root) {
-    return null;
+/* =========================================================
+   Custom Node
+   ========================================================= */
+
+const MindmapFlowNode = memo(
+  function MindmapFlowNode({
+    data,
+    selected,
+  }: NodeProps<MindmapFlowNodeType>) {
+    const {
+      node,
+      depth,
+      theme,
+    } = data;
+
+    const isRoot =
+      node.id === "root" ||
+      depth === 0;
+
+    return (
+      <>
+        {/* Incoming edge */}
+
+        {!isRoot && (
+          <Handle
+            type="target"
+            position={
+              Position.Top
+            }
+            className="
+                            !h-1
+                            !w-1
+                            !border-0
+                            !bg-transparent
+                        "
+          />
+        )}
+
+        {/* Node */}
+
+        <div
+          className="
+                        flex
+                        h-[68px]
+                        w-[190px]
+                        items-center
+                        justify-center
+                        rounded-2xl
+                        px-4
+                        text-center
+                        transition-[box-shadow,border-color]
+                        duration-150
+                    "
+          style={{
+            backgroundColor:
+              isRoot
+                ? theme.ink
+                : theme.canvasBg,
+
+            color:
+              isRoot
+                ? theme.canvasBg
+                : theme.ink,
+
+            border:
+              selected
+                ? `2px solid ${theme.ink}`
+                : `1px solid ${theme.panelBorder}`,
+
+            boxShadow:
+              selected
+                ? `0 0 0 4px ${theme.ink}18`
+                : "0 4px 16px rgba(0,0,0,0.06)",
+
+            fontWeight:
+              isRoot
+                ? 700
+                : 500,
+
+            fontSize:
+              isRoot
+                ? 15
+                : 13,
+
+            lineHeight:
+              1.25,
+          }}
+        >
+          <span className="break-words">
+            {node.label}
+          </span>
+        </div>
+
+        {/* Outgoing edge */}
+
+        <Handle
+          type="source"
+          position={
+            Position.Bottom
+          }
+          className="
+                        !h-1
+                        !w-1
+                        !border-0
+                        !bg-transparent
+                    "
+        />
+      </>
+    );
   }
+);
 
-  if (root.id === id) {
-    return root;
-  }
+MindmapFlowNode.displayName =
+  "MindmapFlowNode";
 
-  for (const child of root.children) {
-    const result = findTreeNode(child, id);
 
-    if (result) {
-      return result;
+/* =========================================================
+   Node Types
+   ========================================================= */
+
+const nodeTypes = {
+  mindmap: MindmapFlowNode,
+};
+
+
+/* =========================================================
+   Calculate Node Depth
+   ========================================================= */
+
+function calculateDepths(
+  mindmap: Mindmap
+) {
+  const depthById =
+    new Map<string, number>();
+
+  depthById.set(
+    mindmap.rootId,
+    0
+  );
+
+  let changed = true;
+
+  while (changed) {
+    changed = false;
+
+    for (
+      const connection of
+      mindmap.connections
+    ) {
+      const parentDepth =
+        depthById.get(
+          connection.from
+        );
+
+      if (
+        parentDepth ===
+        undefined
+      ) {
+        continue;
+      }
+
+      const nextDepth =
+        parentDepth + 1;
+
+      const currentDepth =
+        depthById.get(
+          connection.to
+        );
+
+      if (
+        currentDepth ===
+        undefined ||
+        nextDepth <
+        currentDepth
+      ) {
+        depthById.set(
+          connection.to,
+          nextDepth
+        );
+
+        changed = true;
+      }
     }
   }
 
-  return null;
+  return depthById;
 }
 
-/* ---------------------------------- */
-/* Component */
-/* ---------------------------------- */
+
+/* =========================================================
+   Dagre Layout
+   ========================================================= */
+
+function getLayoutedElements(
+  nodes: MindmapFlowNodeType[],
+  edges: Edge[]
+) {
+  const graph =
+    new dagre.graphlib.Graph();
+
+  graph.setDefaultEdgeLabel(
+    () => ({})
+  );
+
+  graph.setGraph({
+    rankdir: "TB",
+    ranksep:
+      RANK_SEPARATION,
+    nodesep:
+      NODE_SEPARATION,
+    marginx: 40,
+    marginy: 40,
+  });
+
+  for (
+    const node of nodes
+  ) {
+    graph.setNode(
+      node.id,
+      {
+        width:
+          NODE_WIDTH,
+        height:
+          NODE_HEIGHT,
+      }
+    );
+  }
+
+  for (
+    const edge of edges
+  ) {
+    graph.setEdge(
+      edge.source,
+      edge.target
+    );
+  }
+
+  dagre.layout(graph);
+
+  const layoutedNodes =
+    nodes.map((node) => {
+      const position =
+        graph.node(
+          node.id
+        );
+
+      return {
+        ...node,
+
+        position: {
+          x:
+            position.x -
+            NODE_WIDTH / 2,
+
+          y:
+            position.y -
+            NODE_HEIGHT / 2,
+        },
+      };
+    });
+
+  return {
+    nodes:
+      layoutedNodes,
+    edges,
+  };
+}
+
+
+/* =========================================================
+   Component
+   ========================================================= */
 
 export default function MindmapCanvas({
   mindmap,
@@ -81,451 +341,284 @@ export default function MindmapCanvas({
   selectedNode,
   onNodeSelect,
 }: MindmapCanvasProps) {
-  const tree = mindmapToTree(mindmap);
 
-  const [zoom, setZoom] = useState(1);
+  /* -----------------------------------------------------
+     Nodes
+     ----------------------------------------------------- */
 
-  const [pan, setPan] = useState({
-    x: 0,
-    y: 0,
-  });
+  const baseNodes =
+    useMemo<
+      MindmapFlowNodeType[]
+    >(() => {
+      const depthById =
+        calculateDepths(
+          mindmap
+        );
 
-  const containerRef = useRef<HTMLDivElement | null>(null);
+      return mindmap.nodes.map(
+        (node) => ({
+          id: node.id,
 
-  const drag = useRef<{
-    x: number;
-    y: number;
+          type: "mindmap",
 
-    pan: {
-      x: number;
-      y: number;
-    };
+          position: {
+            x: 0,
+            y: 0,
+          },
 
-    moved: boolean;
-  } | null>(null);
+          data: {
+            node,
 
-  /* ---------------------------------- */
-  /* Keyboard */
-  /* ---------------------------------- */
+            depth:
+              depthById.get(
+                node.id
+              ) ?? 0,
+
+            theme,
+          },
+
+          draggable: false,
+
+          selectable: true,
+        })
+      );
+    }, [
+      mindmap,
+      theme,
+    ]);
+
+
+  /* -----------------------------------------------------
+     Edges
+     ----------------------------------------------------- */
+
+  const baseEdges =
+    useMemo<Edge[]>(
+      () =>
+        mindmap.connections.map(
+          (
+            connection,
+            index
+          ) => ({
+            id:
+              `edge-${connection.from}-${connection.to}-${index}`,
+
+            source:
+              connection.from,
+
+            target:
+              connection.to,
+
+            type:
+              "smoothstep",
+
+            label:
+              connection.label,
+
+            style: {
+              stroke:
+                theme.ink,
+
+              strokeWidth:
+                1.5,
+
+              opacity:
+                0.55,
+            },
+
+            labelStyle: {
+              fill:
+                theme.muted,
+
+              fontSize: 10,
+
+              fontWeight:
+                500,
+            },
+
+            labelBgStyle: {
+              fill:
+                theme.canvasBg,
+
+              fillOpacity:
+                0.95,
+            },
+
+            labelBgPadding: [
+              5,
+              3,
+            ],
+
+            labelBgBorderRadius:
+              5,
+
+            interactionWidth:
+              20,
+          })
+        ),
+      [
+        mindmap.connections,
+        theme,
+      ]
+    );
+
+
+  /* -----------------------------------------------------
+     Layout
+     ----------------------------------------------------- */
+
+  const {
+    nodes,
+    edges,
+  } = useMemo(
+    () =>
+      getLayoutedElements(
+        baseNodes,
+        baseEdges
+      ),
+    [
+      baseNodes,
+      baseEdges,
+    ]
+  );
+
+
+  /* -----------------------------------------------------
+     Keyboard
+     ----------------------------------------------------- */
 
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
+    function handleKeyDown(
+      event: KeyboardEvent
+    ) {
+      if (
+        event.key ===
+        "Escape"
+      ) {
         onNodeSelect(null);
       }
     }
 
-    window.addEventListener("keydown", onKey);
+    window.addEventListener(
+      "keydown",
+      handleKeyDown
+    );
 
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onNodeSelect]);
+    return () => {
+      window.removeEventListener(
+        "keydown",
+        handleKeyDown
+      );
+    };
+  }, [
+    onNodeSelect,
+  ]);
 
-  /* ---------------------------------- */
-  /* Zoom */
-  /* ---------------------------------- */
 
-  const onWheel = useCallback((e: WheelEvent) => {
-    e.preventDefault();
+  /* -----------------------------------------------------
+     Node Click
+     ----------------------------------------------------- */
 
-    const delta = e.deltaY > 0 ? -0.08 : 0.08;
+  function handleNodeClick(
+    _: React.MouseEvent,
+    node: MindmapFlowNodeType
+  ) {
+    const clickedNode =
+      node.data.node;
 
-    setZoom((z) => Math.min(2.4, Math.max(0.45, z + delta)));
-  }, []);
-
-  /* ---------------------------------- */
-  /* Drag / Pan */
-  /* ---------------------------------- */
-
-  const onMouseDown = useCallback(
-    (e: ReactMouseEvent) => {
-      drag.current = {
-        x: e.clientX,
-        y: e.clientY,
-
-        pan,
-
-        moved: false,
-      };
-    },
-    [pan],
-  );
-
-  const onMouseMove = useCallback((e: ReactMouseEvent) => {
-    if (!drag.current) {
-      return;
-    }
-
-    const dx = e.clientX - drag.current.x;
-
-    const dy = e.clientY - drag.current.y;
-
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-      drag.current.moved = true;
-    }
-
-    setPan({
-      x: drag.current.pan.x + dx,
-
-      y: drag.current.pan.y + dy,
-    });
-  }, []);
-
-  const stopDrag = useCallback(() => {
-    drag.current = null;
-  }, []);
-
-  /* ---------------------------------- */
-  /* Node click */
-  /* ---------------------------------- */
-
-  function handleNodeClick(e: ReactMouseEvent, nodeId: string) {
-    e.stopPropagation();
-
-    /*
-     * Don't select a node when
-     * the user was actually dragging
-     * the diagram.
-     */
-    if (drag.current?.moved) {
-      return;
-    }
-
-    const node = findTreeNode(tree, nodeId);
-
-    if (!node) {
-      return;
-    }
-
-    /*
-     * Clicking the selected node
-     * again closes the panel.
-     */
-    if (selectedNode?.id === node.id) {
+    if (
+      selectedNode?.id ===
+      clickedNode.id
+    ) {
       onNodeSelect(null);
+
       return;
     }
 
-    onNodeSelect(node);
-  }
-
-  /* ---------------------------------- */
-  /* Empty / invalid tree */
-  /* ---------------------------------- */
-
-  if (!tree) {
-    return (
-      <div
-        className="
-                    flex
-                    h-[600px]
-                    items-center
-                    justify-center
-                    rounded-[20px]
-                    border
-                "
-        style={{
-          borderColor: theme.panelBorder,
-
-          backgroundColor: theme.canvasBg,
-
-          color: theme.muted,
-        }}
-      >
-        Unable to build mindmap layout.
-      </div>
+    onNodeSelect(
+      clickedNode
     );
   }
 
-  /* ---------------------------------- */
-  /* Layout */
-  /* ---------------------------------- */
 
-  const { nodes, links } = useTreeLayout(tree);
-
-  /*
-   * The layout already returns
-   * positions fitted to the canvas.
-   */
-  const fit = 1;
-
-  const nodeW = NODE_W * fit;
-
-  const nodeH = NODE_H * fit;
-
-  /* ---------------------------------- */
-  /* SVG transform */
-  /* ---------------------------------- */
-
-  const groupTransform =
-    `translate(${pan.x} ${pan.y}) ` +
-    `translate(${CANVAS_W / 2} ${CANVAS_H / 2}) ` +
-    `scale(${zoom}) ` +
-    `translate(${-CANVAS_W / 2} ${-CANVAS_H / 2})`;
-
-  /* ---------------------------------- */
-  /* Render */
-  /* ---------------------------------- */
+  /* -----------------------------------------------------
+     Render
+     ----------------------------------------------------- */
 
   return (
     <div
-      ref={containerRef}
-      onClick={() => onNodeSelect(null)}
       className="
                 relative
                 h-[600px]
+                w-full
                 overflow-hidden
-                rounded-[20px]
+                rounded-2xl
                 border
             "
       style={{
-        borderColor: theme.panelBorder,
+        backgroundColor:
+          theme.canvasBg,
 
-        backgroundColor: theme.canvasBg,
+        borderColor:
+          theme.panelBorder,
       }}
     >
-      {/* SVG */}
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={
+          nodeTypes
+        }
 
-      <svg
-        viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`}
-        className="
-                    block
-                    h-full
-                    w-full
-                    select-none
-                "
-        style={{
-          cursor: drag.current ? "grabbing" : "grab",
+        onNodeClick={
+          handleNodeClick
+        }
+
+        onPaneClick={() =>
+          onNodeSelect(null)
+        }
+
+        nodesDraggable={
+          false
+        }
+
+        nodesConnectable={
+          false
+        }
+
+        elementsSelectable={
+          true
+        }
+
+        fitView
+
+        fitViewOptions={{
+          padding: 0.18,
+
+          minZoom: 0.35,
+
+          maxZoom: 1.4,
         }}
-        onWheel={onWheel}
-        onMouseDown={onMouseDown}
-        onMouseMove={onMouseMove}
-        onMouseUp={stopDrag}
-        onMouseLeave={stopDrag}
-      >
-        <g transform={groupTransform}>
-          {/* ----------------------------- */}
-          {/* Growth rings */}
-          {/* ----------------------------- */}
 
-          <g opacity={0.08}>
-            {[46, 78, 112].map((r, i) => (
-              <circle
-                key={r}
-                cx={CANVAS_W / 2}
-                cy={CANVAS_H - 56}
-                r={r}
-                fill="none"
-                stroke={theme.ink}
-                strokeWidth={1}
-                className="ring-pulse"
-                style={{
-                  animationDelay: `${i * 500}ms`,
-                }}
-              />
-            ))}
-          </g>
+        minZoom={0.25}
 
-          {/* ----------------------------- */}
-          {/* Branches */}
-          {/* ----------------------------- */}
+        maxZoom={2}
 
-          {links.map((l, i) => {
-            const midY = (l.source.y + l.target.y) / 2;
+        defaultEdgeOptions={{
+          type:
+            "smoothstep",
+        }}
 
-            const path =
-              `M ${l.source.x} ${l.source.y} ` +
-              `C ${l.source.x} ${midY}, ` +
-              `${l.target.x} ${midY}, ` +
-              `${l.target.x} ${l.target.y}`;
+        proOptions={{
+          hideAttribution:
+            false,
+        }}
 
-            const opacity = Math.max(0.2, 0.55 - l.depth * 0.14);
-
-            return (
-              <path
-                key={i}
-                d={path}
-                fill="none"
-                stroke={theme.ink}
-                strokeOpacity={opacity}
-                strokeLinecap="round"
-                strokeWidth={Math.max(1.3, 3.4 - l.depth * 0.9)}
-                pathLength={1}
-                className="branch-path"
-                style={{
-                  animationDelay: `${l.depth * 160}ms`,
-                }}
-              />
-            );
-          })}
-
-          {/* ----------------------------- */}
-          {/* Nodes */}
-          {/* ----------------------------- */}
-
-          {nodes.map((n, i) => {
-            const isSelected = selectedNode?.id === n.id;
-
-            const s = nodeStyle(theme, n.depth, isSelected);
-
-            const lines = wrapLabel(n.label, n.depth === 0 ? 17 : 15);
-
-            return (
-              <g
-                key={n.id}
-                className="
-                                        tree-node
-                                        cursor-pointer
-                                    "
-                transform={`translate(${n.pos.x} ${n.pos.y})`}
-                tabIndex={0}
-                role="button"
-                aria-label={n.label}
-                onClick={(e) => handleNodeClick(e, n.id)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-
-                    const node = findTreeNode(tree, n.id);
-
-                    if (node) {
-                      if (selectedNode?.id === node.id) {
-                        onNodeSelect(null);
-                      } else {
-                        onNodeSelect(node);
-                      }
-                    }
-                  }
-                }}
-              >
-                <g
-                  className="tree-node-enter"
-                  style={{
-                    animationDelay: `${n.depth * 160 + i * 30}ms`,
-                  }}
-                >
-                  {/* Node rectangle */}
-
-                  <rect
-                    className="node-rect"
-                    x={-nodeW / 2}
-                    y={-nodeH / 2}
-                    width={nodeW}
-                    height={nodeH}
-                    rx={(n.depth === 0 ? 30 : 14) * fit}
-                    fill={s.fill}
-                    stroke={s.stroke}
-                    strokeOpacity={s.strokeOpacity}
-                    strokeWidth={s.strokeWidth}
-                  />
-
-                  {/* Node text */}
-
-                  <text
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    fill={s.text}
-                    fillOpacity={
-                      n.depth === 0 ? 1 : Math.max(0.55, 0.95 - n.depth * 0.2)
-                    }
-                    fontFamily="'Inter', sans-serif"
-                    fontWeight={n.depth === 0 ? 700 : 500}
-                    fontSize={(n.depth === 0 ? 15 : 13) * fit}
-                    style={{
-                      pointerEvents: "none",
-                    }}
-                  >
-                    {lines.map((line, li) => (
-                      <tspan
-                        key={li}
-                        x={0}
-                        dy={
-                          li === 0
-                            ? `${-((lines.length - 1) * 8) * fit}px`
-                            : `${16 * fit}px`
-                        }
-                      >
-                        {line}
-                      </tspan>
-                    ))}
-                  </text>
-                </g>
-              </g>
-            );
-          })}
-        </g>
-      </svg>
-
-      {/* ----------------------------- */}
-      {/* Help text */}
-      {/* ----------------------------- */}
-
-      <div
-        className="
-                    pointer-events-none
-                    absolute
-                    bottom-[14px]
-                    left-4
-                    text-[11px]
-                    tracking-[0.04em]
-                    opacity-80
-                "
-      >
-        <span
-          style={{
-            color: theme.muted,
-          }}
-        >
-          drag to pan · scroll to zoom · click a node
-        </span>
-      </div>
-
-      {/* ----------------------------- */}
-      {/* Controls */}
-      {/* ----------------------------- */}
-
-      <div
-        className="
-                    absolute
-                    bottom-[14px]
-                    right-[14px]
-                    flex
-                    flex-col
-                    gap-2
-                "
-      >
-        <CanvasButton
-          theme={theme}
-          onClick={() => setZoom((z) => Math.min(2.4, z + 0.2))}
-          label="Zoom in"
-        >
-          <ZoomIn size={15} />
-        </CanvasButton>
-
-        <CanvasButton
-          theme={theme}
-          onClick={() => setZoom((z) => Math.max(0.45, z - 0.2))}
-          label="Zoom out"
-        >
-          <ZoomOut size={15} />
-        </CanvasButton>
-
-        <CanvasButton
-          theme={theme}
-          onClick={() => {
-            setZoom(1);
-
-            setPan({
-              x: 0,
-              y: 0,
-            });
-
-            onNodeSelect(null);
-          }}
-          label="Reset view"
-        >
-          <RotateCcw size={14} />
-        </CanvasButton>
-      </div>
+        style={{
+          background:
+            theme.canvasBg,
+        }}
+      />
     </div>
   );
 }

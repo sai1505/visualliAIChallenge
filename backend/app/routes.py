@@ -21,8 +21,11 @@ router = APIRouter(
 def create_mindmap(request: MindmapCreateRequest):
     try:
         mindmap = generate_mindmap(request.text)
+
         mindmap_id = str(uuid4())
-        created_at = datetime.datetime.now(datetime.timezone.utc)
+        created_at = datetime.datetime.now(
+            datetime.timezone.utc
+        )
 
         save_mindmap(
             mindmap_id=mindmap_id,
@@ -39,28 +42,23 @@ def create_mindmap(request: MindmapCreateRequest):
             "createdAt": created_at,
         }
 
-    except RuntimeError:
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+    except RuntimeError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Unable to generate a valid mindmap",
-        )
-    
+            detail=str(exc),
+        ) from exc
+
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unexpected error while generating mindmap",
+            detail="Something went wrong while creating the mindmap. Please try again.",
         )
-
-    '''except Exception as exc:
-        import traceback
-
-        traceback.print_exc()
-
-        raise HTTPException(
-            status_code=500,
-            detail=str(exc),
-        )
-    '''
 
 @router.get(
     "",
