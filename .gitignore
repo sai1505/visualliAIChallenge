@@ -8,3 +8,4 @@ __pycache__/
 .idea/
 roughFile.txt
 backend/.pytest_cache/
+backend/.mindmaps.db
