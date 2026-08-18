@@ -2,9 +2,7 @@ import json
 import sqlite3
 from datetime import datetime
 from pathlib import Path
-
 from app.models import Mindmap
-
 
 DATABASE_PATH = Path(__file__).resolve().parent.parent / "mindmaps.db"
 
@@ -39,7 +37,6 @@ def save_mindmap(
     created_at: datetime,
 ):
     connection = get_connection()
-
     try:
         connection.execute(
             """
@@ -62,7 +59,6 @@ def save_mindmap(
                 created_at.isoformat(),
             ),
         )
-
         connection.commit()
 
     finally:
@@ -85,7 +81,7 @@ def get_mindmap(mindmap_id: str):
 
     if row is None:
         return None
-
+    
     return row
 
 
@@ -101,5 +97,4 @@ def get_all_mindmaps():
     ).fetchall()
 
     connection.close()
-
     return rows

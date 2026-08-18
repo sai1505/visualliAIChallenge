@@ -4,7 +4,6 @@ from pydantic import (
     field_validator,
 )
 
-
 class Node(BaseModel):
     id: str
     label: str
@@ -23,12 +22,10 @@ class Node(BaseModel):
 
         return value
 
-
 class Connection(BaseModel):
     from_: str = Field(alias="from")
     to: str
     label: str
-
 
 class Mindmap(BaseModel):
     title: str
@@ -36,11 +33,7 @@ class Mindmap(BaseModel):
     nodes: list[Node]
     connections: list[Connection]
 
-
-# ============================================================
 # TWO-PHASE GENERATION MODELS
-# ============================================================
-
 class OutlineNode(BaseModel):
     id: str
     label: str
@@ -58,12 +51,10 @@ class OutlineNode(BaseModel):
 
         return value
 
-
 class OutlineConnection(BaseModel):
     from_: str = Field(alias="from")
     to: str
     label: str
-
 
 class MindmapOutline(BaseModel):
     title: str
@@ -71,11 +62,9 @@ class MindmapOutline(BaseModel):
     nodes: list[OutlineNode]
     connections: list[OutlineConnection]
 
-
 class NodeSummary(BaseModel):
     id: str
     summary: str
-
 
 class MindmapEnrichment(BaseModel):
     summaries: list[NodeSummary]

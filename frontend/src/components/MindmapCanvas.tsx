@@ -1,9 +1,4 @@
-import {
-  memo,
-  useEffect,
-  useMemo,
-} from "react";
-
+import { memo, useEffect, useMemo } from "react";
 import {
   Controls,
   Handle,
@@ -13,30 +8,17 @@ import {
   type Node,
   type NodeProps,
 } from "@xyflow/react";
-
 import dagre from "@dagrejs/dagre";
-
-import type {
-  Mindmap,
-  MindmapNode,
-} from "../types/mindmap";
-
+import type { Mindmap, MindmapNode } from "../types/mindmap";
 import type { Theme } from "../constants/theme";
 
-
-/* =========================================================
-   Types
-   ========================================================= */
-
+/* Types */
 interface MindmapCanvasProps {
   mindmap: Mindmap;
   theme: Theme;
   selectedNode: MindmapNode | null;
-  onNodeSelect: (
-    node: MindmapNode | null
-  ) => void;
+  onNodeSelect: (node: MindmapNode | null) => void;
 }
-
 
 type MindmapNodeData = {
   node: MindmapNode;
@@ -44,67 +26,43 @@ type MindmapNodeData = {
   theme: Theme;
 } & Record<string, unknown>;
 
+type MindmapFlowNodeType = Node<MindmapNodeData, "mindmap">;
 
-type MindmapFlowNodeType =
-  Node<
-    MindmapNodeData,
-    "mindmap"
-  >;
-
-
-/* =========================================================
-   Constants
-   ========================================================= */
-
+/* Constants */
 const NODE_WIDTH = 190;
 const NODE_HEIGHT = 68;
-
 const RANK_SEPARATION = 80;
 const NODE_SEPARATION = 30;
 
+/* Custom Node */
+const MindmapFlowNode = memo(function MindmapFlowNode({
+  data,
+  selected,
+}: NodeProps<MindmapFlowNodeType>) {
+  const { node, theme } = data;
 
-/* =========================================================
-   Custom Node
-   ========================================================= */
+  const isRoot = node.id === "root";
 
-const MindmapFlowNode = memo(
-  function MindmapFlowNode({
-    data,
-    selected,
-  }: NodeProps<MindmapFlowNodeType>) {
-    const {
-      node,
-      depth,
-      theme,
-    } = data;
+  return (
+    <>
+      {/* Incoming edge */}
 
-    const isRoot =
-      node.id === "root" ||
-      depth === 0;
-
-    return (
-      <>
-        {/* Incoming edge */}
-
-        {!isRoot && (
-          <Handle
-            type="target"
-            position={
-              Position.Top
-            }
-            className="
+      {!isRoot && (
+        <Handle
+          type="target"
+          position={Position.Top}
+          className="
                             !h-1
                             !w-1
                             !border-0
                             !bg-transparent
                         "
-          />
-        )}
+        />
+      )}
 
-        {/* Node */}
-
-        <div
-          className="
+      {/* Node */}
+      <div
+        className="
                         flex
                         h-[68px]
                         w-[190px]
@@ -116,132 +74,71 @@ const MindmapFlowNode = memo(
                         transition-[box-shadow,border-color]
                         duration-150
                     "
-          style={{
-            backgroundColor:
-              isRoot
-                ? theme.ink
-                : theme.canvasBg,
+        style={{
+          backgroundColor: isRoot ? theme.ink : theme.canvasBg,
+          color: isRoot ? theme.canvasBg : theme.ink,
 
-            color:
-              isRoot
-                ? theme.canvasBg
-                : theme.ink,
+          border: selected
+            ? `2px solid ${theme.ink}`
+            : `1px solid ${theme.panelBorder}`,
 
-            border:
-              selected
-                ? `2px solid ${theme.ink}`
-                : `1px solid ${theme.panelBorder}`,
+          boxShadow: selected
+            ? `0 0 0 4px ${theme.ink}18`
+            : "0 4px 16px rgba(0,0,0,0.06)",
 
-            boxShadow:
-              selected
-                ? `0 0 0 4px ${theme.ink}18`
-                : "0 4px 16px rgba(0,0,0,0.06)",
+          fontWeight: isRoot ? 700 : 500,
+          fontSize: isRoot ? 15 : 13,
+          lineHeight: 1.25,
+        }}
+      >
+        <span className="break-words">{node.label}</span>
+      </div>
 
-            fontWeight:
-              isRoot
-                ? 700
-                : 500,
-
-            fontSize:
-              isRoot
-                ? 15
-                : 13,
-
-            lineHeight:
-              1.25,
-          }}
-        >
-          <span className="break-words">
-            {node.label}
-          </span>
-        </div>
-
-        {/* Outgoing edge */}
-
-        <Handle
-          type="source"
-          position={
-            Position.Bottom
-          }
-          className="
+      {/* Outgoing edge */}
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        className="
                         !h-1
                         !w-1
                         !border-0
                         !bg-transparent
                     "
-        />
-      </>
-    );
-  }
-);
+      />
+    </>
+  );
+});
 
-MindmapFlowNode.displayName =
-  "MindmapFlowNode";
+MindmapFlowNode.displayName = "MindmapFlowNode";
 
-
-/* =========================================================
-   Node Types
-   ========================================================= */
+/* Node Types */
 
 const nodeTypes = {
   mindmap: MindmapFlowNode,
 };
 
+/* Calculate Node Depth */
 
-/* =========================================================
-   Calculate Node Depth
-   ========================================================= */
+function calculateDepths(mindmap: Mindmap) {
+  const depthById = new Map<string, number>();
 
-function calculateDepths(
-  mindmap: Mindmap
-) {
-  const depthById =
-    new Map<string, number>();
-
-  depthById.set(
-    mindmap.rootId,
-    0
-  );
+  depthById.set(mindmap.rootId, 0);
 
   let changed = true;
 
   while (changed) {
     changed = false;
 
-    for (
-      const connection of
-      mindmap.connections
-    ) {
-      const parentDepth =
-        depthById.get(
-          connection.from
-        );
+    for (const connection of mindmap.connections) {
+      const parentDepth = depthById.get(connection.from);
 
-      if (
-        parentDepth ===
-        undefined
-      ) {
+      if (parentDepth === undefined) {
         continue;
       }
-
-      const nextDepth =
-        parentDepth + 1;
-
-      const currentDepth =
-        depthById.get(
-          connection.to
-        );
-
-      if (
-        currentDepth ===
-        undefined ||
-        nextDepth <
-        currentDepth
-      ) {
-        depthById.set(
-          connection.to,
-          nextDepth
-        );
+      const nextDepth = parentDepth + 1;
+      const currentDepth = depthById.get(connection.to);
+      if (currentDepth === undefined || nextDepth < currentDepth) {
+        depthById.set(connection.to, nextDepth);
 
         changed = true;
       }
@@ -251,90 +148,55 @@ function calculateDepths(
   return depthById;
 }
 
+/* Dagre Layout */
 
-/* =========================================================
-   Dagre Layout
-   ========================================================= */
+function getLayoutedElements(nodes: MindmapFlowNodeType[], edges: Edge[]) {
+  const graph = new dagre.graphlib.Graph();
 
-function getLayoutedElements(
-  nodes: MindmapFlowNodeType[],
-  edges: Edge[]
-) {
-  const graph =
-    new dagre.graphlib.Graph();
-
-  graph.setDefaultEdgeLabel(
-    () => ({})
-  );
+  graph.setDefaultEdgeLabel(() => ({}));
 
   graph.setGraph({
     rankdir: "TB",
-    ranksep:
-      RANK_SEPARATION,
-    nodesep:
-      NODE_SEPARATION,
+    ranksep: RANK_SEPARATION,
+    nodesep: NODE_SEPARATION,
     marginx: 40,
     marginy: 40,
   });
 
-  for (
-    const node of nodes
-  ) {
-    graph.setNode(
-      node.id,
-      {
-        width:
-          NODE_WIDTH,
-        height:
-          NODE_HEIGHT,
-      }
-    );
+  for (const node of nodes) {
+    graph.setNode(node.id, {
+      width: NODE_WIDTH,
+      height: NODE_HEIGHT,
+    });
   }
 
-  for (
-    const edge of edges
-  ) {
-    graph.setEdge(
-      edge.source,
-      edge.target
-    );
+  for (const edge of edges) {
+    graph.setEdge(edge.source, edge.target);
   }
 
   dagre.layout(graph);
 
-  const layoutedNodes =
-    nodes.map((node) => {
-      const position =
-        graph.node(
-          node.id
-        );
+  const layoutedNodes = nodes.map((node) => {
+    const position = graph.node(node.id);
 
-      return {
-        ...node,
+    return {
+      ...node,
 
-        position: {
-          x:
-            position.x -
-            NODE_WIDTH / 2,
+      position: {
+        x: position.x - NODE_WIDTH / 2,
 
-          y:
-            position.y -
-            NODE_HEIGHT / 2,
-        },
-      };
-    });
+        y: position.y - NODE_HEIGHT / 2,
+      },
+    };
+  });
 
   return {
-    nodes:
-      layoutedNodes,
+    nodes: layoutedNodes,
     edges,
   };
 }
 
-
-/* =========================================================
-   Component
-   ========================================================= */
+/* Component */
 
 export default function MindmapCanvas({
   mindmap,
@@ -343,208 +205,100 @@ export default function MindmapCanvas({
   onNodeSelect,
 }: MindmapCanvasProps) {
 
-  /* -----------------------------------------------------
-     Nodes
-     ----------------------------------------------------- */
+  /* Nodes */
+  const baseNodes = useMemo<MindmapFlowNodeType[]>(() => {
+    const depthById = calculateDepths(mindmap);
 
-  const baseNodes =
-    useMemo<
-      MindmapFlowNodeType[]
-    >(() => {
-      const depthById =
-        calculateDepths(
-          mindmap
-        );
+    return mindmap.nodes.map((node) => ({
+      id: node.id,
 
-      return mindmap.nodes.map(
-        (node) => ({
-          id: node.id,
+      type: "mindmap",
 
-          type: "mindmap",
+      position: {
+        x: 0,
+        y: 0,
+      },
 
-          position: {
-            x: 0,
-            y: 0,
-          },
+      data: {
+        node,
 
-          data: {
-            node,
+        depth: depthById.get(node.id) ?? 0,
 
-            depth:
-              depthById.get(
-                node.id
-              ) ?? 0,
-
-            theme,
-          },
-
-          draggable: false,
-
-          selectable: true,
-        })
-      );
-    }, [
-      mindmap,
-      theme,
-    ]);
-
-
-  /* -----------------------------------------------------
-     Edges
-     ----------------------------------------------------- */
-
-  const baseEdges =
-    useMemo<Edge[]>(
-      () =>
-        mindmap.connections.map(
-          (
-            connection,
-            index
-          ) => ({
-            id:
-              `edge-${connection.from}-${connection.to}-${index}`,
-
-            source:
-              connection.from,
-
-            target:
-              connection.to,
-
-            type:
-              "smoothstep",
-
-            label:
-              connection.label,
-
-            style: {
-              stroke:
-                theme.ink,
-
-              strokeWidth:
-                1.5,
-
-              opacity:
-                0.55,
-            },
-
-            labelStyle: {
-              fill:
-                theme.muted,
-
-              fontSize: 10,
-
-              fontWeight:
-                500,
-            },
-
-            labelBgStyle: {
-              fill:
-                theme.canvasBg,
-
-              fillOpacity:
-                0.95,
-            },
-
-            labelBgPadding: [
-              5,
-              3,
-            ],
-
-            labelBgBorderRadius:
-              5,
-
-            interactionWidth:
-              20,
-          })
-        ),
-      [
-        mindmap.connections,
         theme,
-      ]
-    );
+      },
 
+      draggable: false,
 
-  /* -----------------------------------------------------
-     Layout
-     ----------------------------------------------------- */
+      selectable: true,
+    }));
+  }, [mindmap, theme]);
 
-  const {
-    nodes,
-    edges,
-  } = useMemo(
+  /* Edges */
+  const baseEdges = useMemo<Edge[]>(
     () =>
-      getLayoutedElements(
-        baseNodes,
-        baseEdges
-      ),
-    [
-      baseNodes,
-      baseEdges,
-    ]
+      mindmap.connections.map((connection, index) => ({
+        id: `edge-${connection.from}-${connection.to}-${index}`,
+        source: connection.from,
+        target: connection.to,
+        type: "smoothstep",
+        label: connection.label,
+        style: {
+          stroke: theme.ink,
+          strokeWidth: 1.5,
+          opacity: 0.55,
+        },
+        labelStyle: {
+          fill: theme.muted,
+          fontSize: 10,
+          fontWeight: 500,
+        },
+        labelBgStyle: {
+          fill: theme.canvasBg,
+          fillOpacity: 0.95,
+        },
+        labelBgPadding: [5, 3],
+        labelBgBorderRadius: 5,
+        interactionWidth: 20,
+      })),
+    [mindmap.connections, theme],
   );
 
+  /* Layout */
 
-  /* -----------------------------------------------------
-     Keyboard
-     ----------------------------------------------------- */
+  const { nodes, edges } = useMemo(
+    () => getLayoutedElements(baseNodes, baseEdges),
+    [baseNodes, baseEdges],
+  );
+
+  /* Keyboard */
 
   useEffect(() => {
-    function handleKeyDown(
-      event: KeyboardEvent
-    ) {
-      if (
-        event.key ===
-        "Escape"
-      ) {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
         onNodeSelect(null);
       }
     }
-
-    window.addEventListener(
-      "keydown",
-      handleKeyDown
-    );
-
+    window.addEventListener("keydown", handleKeyDown);
     return () => {
-      window.removeEventListener(
-        "keydown",
-        handleKeyDown
-      );
+      window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [
-    onNodeSelect,
-  ]);
+  }, [onNodeSelect]);
 
+  /* Node Click */
 
-  /* -----------------------------------------------------
-     Node Click
-     ----------------------------------------------------- */
+  function handleNodeClick(_: React.MouseEvent, node: MindmapFlowNodeType) {
+    const clickedNode = node.data.node;
 
-  function handleNodeClick(
-    _: React.MouseEvent,
-    node: MindmapFlowNodeType
-  ) {
-    const clickedNode =
-      node.data.node;
-
-    if (
-      selectedNode?.id ===
-      clickedNode.id
-    ) {
+    if (selectedNode?.id === clickedNode.id) {
       onNodeSelect(null);
 
       return;
     }
 
-    onNodeSelect(
-      clickedNode
-    );
+    onNodeSelect(clickedNode);
   }
 
-
-  /* -----------------------------------------------------
-     Render
-     ----------------------------------------------------- */
+  /* Render */
 
   return (
     <div
@@ -557,11 +311,9 @@ export default function MindmapCanvas({
                 border
             "
       style={{
-        backgroundColor:
-          theme.canvasBg,
+        backgroundColor: theme.canvasBg,
 
-        borderColor:
-          theme.panelBorder,
+        borderColor: theme.panelBorder,
       }}
     >
       <ReactFlow

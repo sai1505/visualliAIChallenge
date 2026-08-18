@@ -10,7 +10,6 @@ import {
 } from "./api";
 
 import { darkTheme, lightTheme } from "./constants/theme";
-
 import type { Mindmap, MindmapNode, MindmapSummary } from "./types/mindmap";
 
 export default function App() {
@@ -32,7 +31,6 @@ export default function App() {
       try {
         setHistoryLoading(true);
         setHistoryError("");
-
         const maps =
           await getMindmaps();
 
@@ -104,7 +102,6 @@ export default function App() {
         );
 
       setMindmap(result);
-
       const root =
         result.nodes.find(
           (node) =>
@@ -112,7 +109,6 @@ export default function App() {
         );
 
       setSelectedNode(root ?? null);
-
       setGenerationPhase("");
 
       // Refresh saved history
@@ -147,12 +143,10 @@ export default function App() {
   ) {
     try {
       setError("");
-
       const result =
         await getMindmap(id);
 
       setMindmap(result);
-
       const root =
         result.nodes.find(
           (node) =>

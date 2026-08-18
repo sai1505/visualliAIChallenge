@@ -1,7 +1,6 @@
 from app.models import Mindmap
 from app.models import MindmapOutline, MindmapEnrichment
 
-
 def validate_outline(
     outline: MindmapOutline,
 ) -> MindmapOutline:
@@ -51,14 +50,11 @@ def validate_outline(
 
         if node.id == "root":
             continue
-
         if not node.id.startswith("node_"):
             raise ValueError(
                 f"Invalid node ID: {node.id}"
             )
-
         suffix = node.id.removeprefix("node_")
-
         if not suffix.isdigit():
             raise ValueError(
                 f"Invalid node ID: {node.id}"
@@ -66,19 +62,16 @@ def validate_outline(
 
     # 6. Validate connections
     for connection in outline.connections:
-
         if connection.from_ not in node_ids:
             raise ValueError(
                 "Connection source does not exist: "
                 f"{connection.from_}"
             )
-
         if connection.to not in node_ids:
             raise ValueError(
                 "Connection target does not exist: "
                 f"{connection.to}"
             )
-
         # 7. No self-connections
         if connection.from_ == connection.to:
             raise ValueError(
@@ -119,16 +112,13 @@ def validate_enrichment(
 ) -> MindmapEnrichment:
     """
     Validates Phase 2 enrichment.
-
-    Phase 2 is only allowed to provide summaries
-    for nodes that already exist in the outline.
+    Phase 2 is only allowed to provide summaries for nodes that already exist in the outline.
     """
 
     outline_ids = {
         node.id
         for node in outline.nodes
     }
-
     summary_ids = {
         summary.id
         for summary in enrichment.summaries
@@ -136,7 +126,6 @@ def validate_enrichment(
 
     # 1. Every outline node must have a summary
     missing = outline_ids - summary_ids
-
     if missing:
         raise ValueError(
             "Missing summaries for nodes: "
@@ -145,7 +134,6 @@ def validate_enrichment(
 
     # 2. Phase 2 must not create extra nodes
     extra = summary_ids - outline_ids
-
     if extra:
         raise ValueError(
             "Enrichment contains unknown nodes: "
@@ -216,10 +204,8 @@ def validate_mindmap(
 
     # 5. Validate node IDs
     for node in mindmap.nodes:
-
         if node.id == "root":
             continue
-
         if not node.id.startswith("node_"):
             raise ValueError(
                 f"Invalid node ID: {node.id}"
@@ -227,13 +213,11 @@ def validate_mindmap(
 
     # 6. Connections reference real nodes
     for connection in mindmap.connections:
-
         if connection.from_ not in node_ids:
             raise ValueError(
                 "Connection source does not exist: "
                 f"{connection.from_}"
             )
-
         if connection.to not in node_ids:
             raise ValueError(
                 "Connection target does not exist: "
@@ -249,7 +233,6 @@ def validate_mindmap(
 
     # 8. Every non-root node should be connected
     connected_nodes = set()
-
     for connection in mindmap.connections:
         connected_nodes.add(
             connection.from_
@@ -257,17 +240,14 @@ def validate_mindmap(
         connected_nodes.add(
             connection.to
         )
-
     disconnected = (
         node_ids
         - connected_nodes
         - {"root"}
     )
-
     if disconnected:
         raise ValueError(
             "Disconnected nodes detected: "
             f"{sorted(disconnected)}"
         )
-
     return mindmap

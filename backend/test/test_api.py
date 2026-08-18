@@ -93,7 +93,7 @@ def sample_mindmap():
 
 def test_create_mindmap_rejects_empty_text():
     response = client.post(
-        "/api/mindmaps",
+        "/api/mindmaps/stream",
         json={
             "text": ""
         },
@@ -119,11 +119,20 @@ def test_create_mindmap_success(
 
     saved = {}
 
-    def fake_generate_mindmap(text):
+    def fake_generate_mindmap(text, on_phase=None):
         assert text == (
             "Machine learning uses data "
             "to train models."
         )
+
+        if on_phase:
+            on_phase("outline_started")
+            on_phase(
+                "outline_completed",
+                {"nodeCount": 5},
+            )
+            on_phase("enrichment_started")
+            on_phase("enrichment_completed")
 
         return sample_mindmap
 
@@ -149,7 +158,7 @@ def test_create_mindmap_success(
     )
 
     response = client.post(
-        "/api/mindmaps",
+        "/api/mindmaps/stream",
         json={
             "text": (
                 "Machine learning uses data "
@@ -158,22 +167,22 @@ def test_create_mindmap_success(
         },
     )
 
-    assert response.status_code == 201
+    assert response.status_code == 200
 
-    body = response.json()
+    body = response.text
 
-    assert body["title"] == "Machine Learning"
-    assert body["rootId"] == "root"
+    # Streaming phases were emitted.
+    assert "outline_started" in body
+    assert "outline_completed" in body
+    assert "enrichment_started" in body
+    assert "enrichment_completed" in body
 
-    assert "id" in body
-    assert "createdAt" in body
+    # Generation completed.
+    assert "event: complete" in body
+    assert "Machine Learning" in body
 
-    assert len(body["nodes"]) == 5
-    assert len(body["connections"]) == 4
-
-    # Verify persistence function was actually called.
+    # Persistence happened.
     assert "id" in saved
-    assert saved["id"] == body["id"]
     assert saved["mindmap"] == sample_mindmap
 
 

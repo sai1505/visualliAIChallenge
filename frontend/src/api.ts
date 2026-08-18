@@ -229,9 +229,7 @@ export async function getMindmap(
     } catch {
       // Keep default message.
     }
-
     throw new Error(message);
   }
-
   return response.json();
 }
